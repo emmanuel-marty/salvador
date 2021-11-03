@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Fichiers sources">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Fichiers d%27en-tête">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Fichiers de ressources">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Fichiers sources\libdivsufsort">
+      <UniqueIdentifier>{86e66d4d-937b-4037-af93-856105377549}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Fichiers sources\libdivsufsort\include">
+      <UniqueIdentifier>{c4baa29b-3731-40b1-bcc9-d5aa5673114f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Fichiers sources\libdivsufsort\lib">
+      <UniqueIdentifier>{56092ba4-e514-4de2-8528-adff2da7ac3f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\expand.c">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\matchfinder.c">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\salvador.c">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\shrink.c">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\libdivsufsort\lib\divsufsort.c">
+      <Filter>Fichiers sources\libdivsufsort\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\libdivsufsort\lib\divsufsort_utils.c">
+      <Filter>Fichiers sources\libdivsufsort\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\libdivsufsort\lib\sssort.c">
+      <Filter>Fichiers sources\libdivsufsort\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\libdivsufsort\lib\trsort.c">
+      <Filter>Fichiers sources\libdivsufsort\lib</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\expand.h">
+      <Filter>Fichiers sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\format.h">
+      <Filter>Fichiers sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\libsalvador.h">
+      <Filter>Fichiers sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\matchfinder.h">
+      <Filter>Fichiers sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\shrink.h">
+      <Filter>Fichiers sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\libdivsufsort\include\divsufsort.h">
+      <Filter>Fichiers sources\libdivsufsort\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\libdivsufsort\include\divsufsort_config.h">
+      <Filter>Fichiers sources\libdivsufsort\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\libdivsufsort\include\divsufsort_private.h">
+      <Filter>Fichiers sources\libdivsufsort\include</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
