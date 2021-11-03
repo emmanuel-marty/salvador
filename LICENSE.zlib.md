@@ -1,4 +1,4 @@
-Copyright (c) 2019 Emmanuel Marty
+Copyright (c) 2021 Emmanuel Marty
 
 This software is provided 'as-is', without any express or implied warranty. In
 no event will the authors be held liable for any damages arising from the use of
