@@ -98,7 +98,7 @@ static inline FORCE_INLINE int salvador_read_elias_prefix(const unsigned char** 
  *
  * @param pInputData compressed data
  * @param nInputSize compressed size in bytes
- * @param nFlags compression flags (set to 0)
+ * @param nFlags compression flags (set to FLG_IS_INVERTED)
  *
  * @return maximum decompressed size
  */
@@ -197,7 +197,7 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
  * @param nInputSize compressed size in bytes
  * @param nMaxOutBufferSize maximum capacity of decompression buffer
  * @param nDictionarySize size of dictionary in front of input data (0 for none)
- * @param nFlags compression flags (set to 0)
+ * @param nFlags compression flags (set to FLG_IS_INVERTED)
  *
  * @return actual decompressed size, or -1 for error
  */

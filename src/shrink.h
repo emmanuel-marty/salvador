@@ -160,7 +160,7 @@ size_t salvador_get_max_compressed_size(size_t nInputSize);
  * @param pOutBuffer buffer for compressed data
  * @param nInputSize input(source) size in bytes
  * @param nMaxOutBufferSize maximum capacity of compression buffer
- * @param nFlags compression flags (set to 0)
+ * @param nFlags compression flags (set to FLG_IS_INVERTED)
  * @param nMaxWindowSize maximum window size to use (0 for default)
  * @param nDictionarySize size of dictionary in front of input data (0 for none)
  * @param progress progress function, called after compressing each block, or NULL for none
