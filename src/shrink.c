@@ -683,7 +683,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
             }
          }
 
-         if (nOrigMatchLen >= 512)
+         if (nOrigMatchLen >= 512 && ((m + 1) >= NMATCHES_PER_INDEX || match[m + 1].length < 512))
             break;
       }
    }
@@ -925,7 +925,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
          }
 
-         if ((i + pMatch->length) <= nEndOffset && pMatch->offset > 0 && pMatch->length >= MIN_ENCODED_MATCH_SIZE &&
+         if ((i + pMatch->length) < nEndOffset && pMatch->offset > 0 && pMatch->length >= MIN_ENCODED_MATCH_SIZE &&
             pBestMatch[i + pMatch->length].offset > 0 &&
             pBestMatch[i + pMatch->length].length >= MIN_ENCODED_MATCH_SIZE &&
             (pMatch->length + pBestMatch[i + pMatch->length].length) >= LEAVE_ALONE_MATCH_SIZE &&
