@@ -90,9 +90,7 @@ typedef struct {
 /** Compression statistics */
 typedef struct _salvador_stats {
    int num_literals;
-   int num_4bit_matches;
-   int num_7bit_matches;
-   int num_variable_matches;
+   int num_normal_matches;
    int num_rep_matches;
    int num_eod;
 

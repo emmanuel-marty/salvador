@@ -242,6 +242,9 @@ static int do_compress(const char *pszInFilename, const char *pszOutFilename, co
       else
          fprintf(stdout, "Literals: none\n");
 
+      fprintf(stdout, "Normal matches: %d rep matches: %d EOD: %d\n",
+         stats.num_normal_matches, stats.num_rep_matches, stats.num_eod);
+
       if (stats.match_divisor > 0) {
          fprintf(stdout, "Offsets: min: %d avg: %d max: %d count: %d\n", stats.min_offset, (int)(stats.total_offsets / (long long)stats.match_divisor), stats.max_offset, stats.match_divisor);
          fprintf(stdout, "Match lens: min: %d avg: %d max: %d count: %d\n", stats.min_match_len, stats.total_match_lens / stats.match_divisor, stats.max_match_len, stats.match_divisor);

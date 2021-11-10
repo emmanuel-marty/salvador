@@ -320,7 +320,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
    salvador_arrival *arrival = pCompressor->arrival - (nStartOffset * NARRIVALS_PER_POSITION);
    const int* rle_len = (int*)pCompressor->intervals /* reuse */;
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
-   const int nModeSwitchPenalty = 0;
    int i, j, n;
 
    if ((nEndOffset - nStartOffset) > pCompressor->block_size) return;
@@ -351,9 +350,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
          if (nNumLiterals > 1)
             nCodingChoiceCost -= salvador_get_literals_varlen_size(nNumLiterals - 1);
          nCodingChoiceCost += salvador_get_literals_varlen_size(nNumLiterals);
-
-         if (nNumLiterals == 1)
-            nCodingChoiceCost += nModeSwitchPenalty;
 
          salvador_arrival* pDestSlots = &cur_arrival[NARRIVALS_PER_POSITION];
          if (nCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
@@ -505,8 +501,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                   const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
 
                   nNoRepmatchOffsetCost += nPrevCost /* the actual cost of the literals themselves accumulates up the chain */;
-                  if (!cur_arrival[j].num_literals)
-                     nNoRepmatchOffsetCost += nModeSwitchPenalty;
 
                   nNoRepmatchScore = cur_arrival[j].score + nScorePenalty;
                   nNonRepMatchArrivalIdx = j;
@@ -1218,6 +1212,8 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
 
          if (nMatchOffset == nRepMatchOffset)
             pCompressor->stats.num_rep_matches++;
+         else
+            pCompressor->stats.num_normal_matches++;
 
          nRepMatchOffset = nMatchOffset;
 
@@ -1304,6 +1300,8 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
 
       nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, 256 /* EOD */, nIsInverted, nCurBitsOffset, nCurBitShift, NULL);
       if (nOutOffset < 0) return -1;
+
+      pCompressor->stats.num_eod++;
    }
    else {
       *nFinalLiterals = nNumLiterals;
