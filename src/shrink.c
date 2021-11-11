@@ -40,6 +40,11 @@
 #define TOKEN_SIZE               1
 #define OFFSET_COST(__offset)    (((__offset) <= 128) ? 8 : (7 + salvador_get_elias_size((((__offset) - 1) >> 7) + 1)))
 
+/** Costs, per length */
+static const char salvador_cost_for_len[LEAVE_ALONE_MATCH_SIZE + 1] = {
+   0, 2, 4, 4, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, 8, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
+};
+
 /**
  * Write bitpacked value to output (compressed) buffer
  *
@@ -158,8 +163,12 @@ static int salvador_write_elias_value(unsigned char* pOutData, int nOutOffset, c
  * @return number of extra bits required
  */
 static inline int salvador_get_literals_varlen_size(const int nLength) {
-   if (nLength > 0)
-      return TOKEN_SIZE + salvador_get_elias_size(nLength);
+   if (nLength > 0) {
+      if (nLength <= LEAVE_ALONE_MATCH_SIZE)
+         return salvador_cost_for_len[nLength];
+      else
+         return TOKEN_SIZE + salvador_get_elias_size(nLength);
+   }
    else
       return 0;
 }
@@ -521,7 +530,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                /* Insert non-repmatch candidate */
 
                if (k >= 2 && nNonRepMatchArrivalIdx >= 0) {
-                  int nMatchLenCost = salvador_get_match_varlen_size_norep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */;
+                  const int nMatchLenCost = (k <= LEAVE_ALONE_MATCH_SIZE) ? salvador_cost_for_len[k - 1] : (salvador_get_match_varlen_size_norep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
                   int nCodingChoiceCost = nMatchLenCost + nNoRepmatchOffsetCost;
 
                   if (nCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 2].cost ||
@@ -590,8 +599,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
                /* Insert repmatch candidates */
 
-               if (k > nOverallMinRepLen  && k <= nOverallMaxRepLen) {
-                  int nMatchLenCost = salvador_get_match_varlen_size_rep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */;
+               if (k > nOverallMinRepLen && k <= nOverallMaxRepLen) {
+                  const int nMatchLenCost = (k <= LEAVE_ALONE_MATCH_SIZE) ? salvador_cost_for_len[k] : (salvador_get_match_varlen_size_rep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
                   int nCurRepMatchArrival;
 
                   if (k <= LEAVE_ALONE_MATCH_SIZE)
