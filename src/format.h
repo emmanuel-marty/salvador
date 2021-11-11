@@ -32,7 +32,7 @@
 #define _FORMAT_H
 
 #define MIN_OFFSET 1
-#define MAX_OFFSET 0x7f7f
+#define MAX_OFFSET 0x7f80
 
 #define MAX_VARLEN 0xffff
 
