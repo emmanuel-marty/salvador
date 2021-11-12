@@ -248,62 +248,64 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
             int nRepPos = arrival[j].rep_pos;
 
             if (nRepPos >= nStartOffset &&
-               (nRepPos + 1) < nEndOffset &&
+               nRepPos < nEndOffset &&
                visited[nRepPos].outer != nMatchOffset) {
 
                visited[nRepPos].outer = nMatchOffset;
 
-               if (visited[nRepPos].inner != nMatchOffset && nRepPos >= nMatchOffset && pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0) {
+               if (visited[nRepPos].inner != nMatchOffset && nRepPos >= nMatchOffset) {
                   const unsigned char* pInWindowAtRepOffset = pInWindow + nRepPos;
 
                   if (pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset]) {
                      visited[nRepPos].inner = nMatchOffset;
 
-                     const int nLen0 = rle_len[nRepPos - nMatchOffset];
-                     const int nLen1 = rle_len[nRepPos];
-                     int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
+                     if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0) {
+                        const int nLen0 = rle_len[nRepPos - nMatchOffset];
+                        const int nLen1 = rle_len[nRepPos];
+                        int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
 
-                     int nMaxRepLen = nEndOffset - nRepPos;
-                     if (nMaxRepLen > LCP_MAX)
-                        nMaxRepLen = LCP_MAX;
+                        int nMaxRepLen = nEndOffset - nRepPos;
+                        if (nMaxRepLen > LCP_MAX)
+                           nMaxRepLen = LCP_MAX;
 
-                     if (nMinLen > nMaxRepLen)
-                        nMinLen = nMaxRepLen;
+                        if (nMinLen > nMaxRepLen)
+                           nMinLen = nMaxRepLen;
 
-                     const unsigned char* pInWindowMax = pInWindowAtRepOffset + nMaxRepLen;
-                     pInWindowAtRepOffset += nMinLen;
+                        const unsigned char* pInWindowMax = pInWindowAtRepOffset + nMaxRepLen;
+                        pInWindowAtRepOffset += nMinLen;
 
-                     while ((pInWindowAtRepOffset + 8) < pInWindowMax && !memcmp(pInWindowAtRepOffset, pInWindowAtRepOffset - nMatchOffset, 8))
-                        pInWindowAtRepOffset += 8;
-                     while ((pInWindowAtRepOffset + 4) < pInWindowMax && !memcmp(pInWindowAtRepOffset, pInWindowAtRepOffset - nMatchOffset, 4))
-                        pInWindowAtRepOffset += 4;
-                     while (pInWindowAtRepOffset < pInWindowMax && pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset])
-                        pInWindowAtRepOffset++;
+                        while ((pInWindowAtRepOffset + 8) < pInWindowMax && !memcmp(pInWindowAtRepOffset, pInWindowAtRepOffset - nMatchOffset, 8))
+                           pInWindowAtRepOffset += 8;
+                        while ((pInWindowAtRepOffset + 4) < pInWindowMax && !memcmp(pInWindowAtRepOffset, pInWindowAtRepOffset - nMatchOffset, 4))
+                           pInWindowAtRepOffset += 4;
+                        while (pInWindowAtRepOffset < pInWindowMax && pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset])
+                           pInWindowAtRepOffset++;
 
-                     const int nCurRepLen = (int)(pInWindowAtRepOffset - (pInWindow + nRepPos));
+                        const int nCurRepLen = (int)(pInWindowAtRepOffset - (pInWindow + nRepPos));
 
-                     salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
-                     unsigned short* fwd_depth = pCompressor->match_depth + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
-                     int r;
+                        salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
+                        unsigned short* fwd_depth = pCompressor->match_depth + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
+                        int r;
 
-                     for (r = 0; fwd_match[r].length; r++) {
-                        if (fwd_match[r].offset == nMatchOffset) {
-                           if ((int)fwd_match[r].length < nCurRepLen && (fwd_depth[r] & 0x3fff) == 0) {
-                              fwd_match[r].length = nCurRepLen;
-                              fwd_depth[r] = 0;
+                        for (r = 0; fwd_match[r].length; r++) {
+                           if (fwd_match[r].offset == nMatchOffset) {
+                              if ((int)fwd_match[r].length < nCurRepLen && (fwd_depth[r] & 0x3fff) == 0) {
+                                 fwd_match[r].length = nCurRepLen;
+                                 fwd_depth[r] = 0;
+                              }
+                              r = NMATCHES_PER_INDEX;
+                              break;
                            }
-                           r = NMATCHES_PER_INDEX;
-                           break;
                         }
-                     }
 
-                     if (r < NMATCHES_PER_INDEX) {
-                        fwd_match[r].offset = nMatchOffset;
-                        fwd_match[r].length = nCurRepLen;
-                        fwd_depth[r] = 0;
+                        if (r < NMATCHES_PER_INDEX) {
+                           fwd_match[r].offset = nMatchOffset;
+                           fwd_match[r].length = nCurRepLen;
+                           fwd_depth[r] = 0;
 
-                        if (nDepth < 9)
-                           salvador_insert_forward_match(pCompressor, pInWindow, nRepPos, nMatchOffset, nStartOffset, nEndOffset, nDepth + 1);
+                           if (nDepth < 9)
+                              salvador_insert_forward_match(pCompressor, pInWindow, nRepPos, nMatchOffset, nStartOffset, nEndOffset, nDepth + 1);
+                        }
                      }
                   }
                }
