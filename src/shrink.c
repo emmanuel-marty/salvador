@@ -388,40 +388,38 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                }
 
                if (!exists) {
-                  if (n < nArrivalsPerPosition) {
-                     int nn;
+                  int nn;
 
-                     for (nn = n;
-                        nn < nArrivalsPerPosition && pDestSlots[nn].cost == nCodingChoiceCost;
-                        nn++) {
-                        if (pDestSlots[nn].rep_offset == nRepOffset) {
-                           exists = 1;
+                  for (nn = n;
+                     nn < nArrivalsPerPosition && pDestSlots[nn].cost == nCodingChoiceCost;
+                     nn++) {
+                     if (pDestSlots[nn].rep_offset == nRepOffset) {
+                        exists = 1;
+                        break;
+                     }
+                  }
+
+                  if (!exists) {
+                     int z;
+
+                     for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
+                        if (pDestSlots[z].rep_offset == nRepOffset)
                            break;
-                        }
                      }
 
-                     if (!exists) {
-                        int z;
+                     memmove(&pDestSlots[n + 1],
+                        &pDestSlots[n],
+                        sizeof(salvador_arrival) * (z - n));
 
-                        for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
-                           if (pDestSlots[z].rep_offset == nRepOffset)
-                              break;
-                        }
-
-                        memmove(&pDestSlots[n + 1],
-                           &pDestSlots[n],
-                           sizeof(salvador_arrival) * (z - n));
-
-                        salvador_arrival* pDestArrival = &pDestSlots[n];
-                        pDestArrival->cost = nCodingChoiceCost;
-                        pDestArrival->from_pos = i;
-                        pDestArrival->from_slot = j + 1;
-                        pDestArrival->rep_offset = nRepOffset;
-                        pDestArrival->rep_pos = cur_arrival[j].rep_pos;
-                        pDestArrival->match_len = 0;
-                        pDestArrival->num_literals = nNumLiterals;
-                        pDestArrival->score = nScore;
-                     }
+                     salvador_arrival* pDestArrival = &pDestSlots[n];
+                     pDestArrival->cost = nCodingChoiceCost;
+                     pDestArrival->from_pos = i;
+                     pDestArrival->from_slot = j + 1;
+                     pDestArrival->rep_offset = nRepOffset;
+                     pDestArrival->rep_pos = cur_arrival[j].rep_pos;
+                     pDestArrival->match_len = 0;
+                     pDestArrival->num_literals = nNumLiterals;
+                     pDestArrival->score = nScore;
                   }
                }
             }
@@ -641,40 +639,38 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                               }
 
                               if (!exists) {
-                                 if (n < nArrivalsPerPosition) {
-                                    int nn;
+                                 int nn;
 
-                                    for (nn = n;
-                                       nn < nArrivalsPerPosition && pDestSlots[nn].cost == nRepCodingChoiceCost;
-                                       nn++) {
-                                       if (pDestSlots[nn].rep_offset == nRepOffset) {
-                                          exists = 1;
+                                 for (nn = n;
+                                    nn < nArrivalsPerPosition && pDestSlots[nn].cost == nRepCodingChoiceCost;
+                                    nn++) {
+                                    if (pDestSlots[nn].rep_offset == nRepOffset) {
+                                       exists = 1;
+                                       break;
+                                    }
+                                 }
+
+                                 if (!exists) {
+                                    int z;
+
+                                    for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
+                                       if (pDestSlots[z].rep_offset == nRepOffset)
                                           break;
-                                       }
                                     }
 
-                                    if (!exists) {
-                                       int z;
+                                    memmove(&pDestSlots[n + 1],
+                                       &pDestSlots[n],
+                                       sizeof(salvador_arrival) * (z - n));
 
-                                       for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
-                                          if (pDestSlots[z].rep_offset == nRepOffset)
-                                             break;
-                                       }
-
-                                       memmove(&pDestSlots[n + 1],
-                                          &pDestSlots[n],
-                                          sizeof(salvador_arrival) * (z - n));
-
-                                       salvador_arrival* pDestArrival = &pDestSlots[n];
-                                       pDestArrival->cost = nRepCodingChoiceCost;
-                                       pDestArrival->from_pos = i;
-                                       pDestArrival->from_slot = j + 1;
-                                       pDestArrival->match_len = k;
-                                       pDestArrival->num_literals = 0;
-                                       pDestArrival->score = nScore;
-                                       pDestArrival->rep_offset = nRepOffset;
-                                       pDestArrival->rep_pos = i;
-                                    }
+                                    salvador_arrival* pDestArrival = &pDestSlots[n];
+                                    pDestArrival->cost = nRepCodingChoiceCost;
+                                    pDestArrival->from_pos = i;
+                                    pDestArrival->from_slot = j + 1;
+                                    pDestArrival->match_len = k;
+                                    pDestArrival->num_literals = 0;
+                                    pDestArrival->score = nScore;
+                                    pDestArrival->rep_offset = nRepOffset;
+                                    pDestArrival->rep_pos = i;
                                  }
                               }
                            }
@@ -766,7 +762,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
       }
 
       if (pMatch->length >= MIN_ENCODED_MATCH_SIZE) {
-         if (nFollowsLiteral && (i + pMatch->length) < nEndOffset /* Don't consider the last match in the block, we can only reduce a match inbetween other tokens */) {
+         if ((i + pMatch->length) < nEndOffset /* Don't consider the last match in the block, we can only reduce a match inbetween other tokens */) {
             int nNextIndex = i + pMatch->length;
             int nNextLiterals = 0;
 
@@ -778,7 +774,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             if (nNextIndex < nEndOffset && pBestMatch[nNextIndex].length >= MIN_ENCODED_MATCH_SIZE) {
                /* This command is a match, is followed by 'nNextLiterals' literals and then by another match */
 
-               if (nRepMatchOffset && pMatch->offset != nRepMatchOffset && (pBestMatch[nNextIndex].offset != pMatch->offset || pBestMatch[nNextIndex].offset == nRepMatchOffset ||
+               if (nFollowsLiteral && nRepMatchOffset && pMatch->offset != nRepMatchOffset && (pBestMatch[nNextIndex].offset != pMatch->offset || pBestMatch[nNextIndex].offset == nRepMatchOffset ||
                   OFFSET_COST(pMatch->offset) > OFFSET_COST(pBestMatch[nNextIndex].offset))) {
                   /* Check if we can change the current match's offset to be the same as the previous match's offset, and get an extra repmatch. This will occur when
                    * matching large regions of identical bytes for instance, where there are too many offsets to be considered by the parser, and when not compressing to favor the
@@ -836,7 +832,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                      nCurCommandSize += salvador_get_literals_varlen_size(nNumLiterals);
                      nCurCommandSize += (nNumLiterals << 3);
                   }
-                  if (nRepMatchOffset && pMatch->offset == nRepMatchOffset && nNumLiterals != 0) {
+                  if (nRepMatchOffset && pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nFollowsLiteral != 0) {
                      /* Rep match */
                      nCurCommandSize += 1; /* rep-match follows */
 
@@ -855,7 +851,6 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
 
                      /* Match length */
                      nCurCommandSize += salvador_get_match_varlen_size_norep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
-
                   }
 
                   /* Calculate the next command's current cost */
@@ -892,7 +887,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   nReducedCommandSize += salvador_get_literals_varlen_size(nNumLiterals + pMatch->length + nNextLiterals);
                   nReducedCommandSize += ((nNumLiterals + nNextLiterals) << 3);
 
-                  if (nRepMatchOffset && pBestMatch[nNextIndex].offset == nRepMatchOffset && (nNumLiterals + pMatch->length + nNextLiterals) != 0) {
+                  if (nRepMatchOffset && pBestMatch[nNextIndex].offset == nRepMatchOffset && (nNumLiterals + pMatch->length + nNextLiterals) != 0 && nFollowsLiteral != 0) {
                      /* Rep match */
                      nReducedCommandSize += 1; /* rep-match follows */
 
