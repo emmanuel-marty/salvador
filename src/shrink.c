@@ -1067,6 +1067,80 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
          }
 
+         if (nNumLiterals != 0 && nRepMatchOffset && pMatch->offset != nRepMatchOffset && pMatch->length == MIN_ENCODED_MATCH_SIZE) {
+            if ((i + pMatch->length) < nEndOffset) {
+               int nNextIndex = i + pMatch->length;
+               int nNextLiterals = 0;
+
+               /* Check if we can turn a match + a 1 byte rep match into all literals, and either reduce the output or keep it the same size */
+
+               while (nNextIndex < nEndOffset && pBestMatch[nNextIndex].length == 0) {
+                  nNextLiterals++;
+                  nNextIndex++;
+               }
+
+               if (nNextIndex < nEndOffset && nNextLiterals != 0 &&
+                  pBestMatch[nNextIndex].length == 1 &&
+                  pBestMatch[nNextIndex].offset == pMatch->offset) {
+                  int nCurCommandSize, nCurRepMatchSize, nReducedCommandSize;
+                  int nNextNextIndex = nNextIndex + pBestMatch[nNextIndex].length;
+                  int nNextNextLiterals = 0;
+
+                  while (nNextNextIndex < nEndOffset && pBestMatch[nNextNextIndex].length == 0) {
+                     nNextNextLiterals++;
+                     nNextNextIndex++;
+                  }
+
+                  if (nNextNextIndex < nEndOffset && nNextNextLiterals != 0 &&
+                     pBestMatch[nNextNextIndex].length >= MIN_ENCODED_MATCH_SIZE &&
+                     pBestMatch[nNextNextIndex].offset != pBestMatch[nNextIndex].offset) {
+
+                     /* First command: match with offset */
+                     nCurCommandSize = salvador_get_literals_varlen_size(nNumLiterals);
+                     nCurCommandSize += (nNumLiterals << 3);
+
+                     /* Match with offset */
+                     nCurCommandSize += 1; /* match with offset follows */
+
+                     /* High bits of match offset */
+                     nCurCommandSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
+
+                     /* Low byte of match offset */
+                     nCurCommandSize += 7;
+
+                     /* Match length */
+                     nCurCommandSize += salvador_get_match_varlen_size_norep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
+
+                     /* Second command: rep-match */
+                     nCurRepMatchSize = salvador_get_literals_varlen_size(nNextLiterals);
+                     nCurRepMatchSize += (nNextLiterals << 3);
+
+                     nCurRepMatchSize += 1; /* rep-match follows */
+                     nCurRepMatchSize += salvador_get_match_varlen_size_rep(pBestMatch[nNextIndex].length - MIN_ENCODED_MATCH_SIZE);
+
+                     /* Combined commands as literals */
+                     nReducedCommandSize = salvador_get_literals_varlen_size(nNumLiterals + pMatch->length + nNextLiterals + pBestMatch[nNextIndex].length);
+                     nReducedCommandSize += (nNumLiterals << 3);
+                     nReducedCommandSize += (pMatch->length << 3);
+                     nReducedCommandSize += (nNextLiterals << 3);
+                     nReducedCommandSize += (pBestMatch[nNextIndex].length << 3);
+
+                     if ((nCurCommandSize + nCurRepMatchSize) >= nReducedCommandSize) {
+                        int nMatchLen = pMatch->length;
+                        int j;
+
+                        for (j = 0; j < nMatchLen; j++) {
+                           pBestMatch[i + j].length = 0;
+                        }
+
+                        pBestMatch[nNextIndex].length = 0;
+                        nDidReduce = 1;
+                     }
+                  }
+               }
+            }
+         }
+
          nRepMatchOffset = pMatch->offset;
 
          i += pMatch->length;
