@@ -72,7 +72,7 @@ typedef struct {
    unsigned int from_pos:17;
    int from_slot:8;
 
-   unsigned int rep_offset:17;
+   unsigned int rep_offset;
 
    unsigned int rep_pos:17;
    unsigned int match_len:14;
