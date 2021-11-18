@@ -51,34 +51,29 @@ static const char salvador_cost_for_len[LEAVE_ALONE_MATCH_SIZE + 1] = {
  * @param pOutData pointer to output buffer
  * @param nOutOffset current write index into output buffer
  * @param nMaxOutDataSize maximum size of output buffer, in bytes
- * @param nValue value to write
- * @param nBits number of least significant bits to write in value
+ * @param nValue bit value to write
  * @param nCurBitsOffset write index into output buffer, of current byte being filled with bits
  * @param nCurBitShift bit shift count
  *
  * @return updated write index into output buffer, or -1 in case of an error
  */
-static int salvador_write_bits(unsigned char *pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, const int nBits, int *nCurBitsOffset, int *nCurBitShift) {
-   int i;
-
+static int salvador_write_bit(unsigned char *pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, int *nCurBitsOffset, int *nCurBitShift) {
    if (nOutOffset < 0) return -1;
 
-   for (i = nBits - 1; i >= 0; i--) {
-      if ((*nCurBitsOffset) == INT_MIN) {
-         /* Allocate a new byte in the stream to pack bits in */
-         if (nOutOffset >= nMaxOutDataSize) return -1;
-         (*nCurBitsOffset) = nOutOffset;
-         (*nCurBitShift) = 7;
-         pOutData[nOutOffset++] = 0;
-      }
+   if ((*nCurBitsOffset) == INT_MIN) {
+      /* Allocate a new byte in the stream to pack bits in */
+      if (nOutOffset >= nMaxOutDataSize) return -1;
+      (*nCurBitsOffset) = nOutOffset;
+      (*nCurBitShift) = 7;
+      pOutData[nOutOffset++] = 0;
+   }
 
-      pOutData[(*nCurBitsOffset)] |= ((nValue >> i) & 1) << (*nCurBitShift);
+   pOutData[(*nCurBitsOffset)] |= nValue << (*nCurBitShift);
 
-      (*nCurBitShift) --;
-      if ((*nCurBitShift) == -1) {
-         /* Current byte is full */
-         (*nCurBitsOffset) = INT_MIN;
-      }
+   (*nCurBitShift) --;
+   if ((*nCurBitShift) == -1) {
+      /* Current byte is full */
+      (*nCurBitsOffset) = INT_MIN;
    }
 
    return nOutOffset;
@@ -136,12 +131,12 @@ static int salvador_write_elias_value(unsigned char* pOutData, int nOutOffset, c
          nFirstBit = NULL;
       }
       else {
-         nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 0, 1, nCurBitsOffset, nCurBitShift);
+         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 0, nCurBitsOffset, nCurBitShift);
       }
       if (nIsInverted)
-         nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 0 : 1, 1, nCurBitsOffset, nCurBitShift);
+         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 0 : 1, nCurBitsOffset, nCurBitShift);
       else
-         nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, 1, nCurBitsOffset, nCurBitShift);
+         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, nCurBitsOffset, nCurBitShift);
    }
 
    if (nFirstBit) {
@@ -149,7 +144,7 @@ static int salvador_write_elias_value(unsigned char* pOutData, int nOutOffset, c
       nFirstBit = NULL;
    }
    else {
-      nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 1, 1, nCurBitsOffset, nCurBitShift);
+      nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 1, nCurBitsOffset, nCurBitShift);
    }
 
    return nOutOffset;
@@ -531,7 +526,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
                if (k >= 2 && nNonRepMatchArrivalIdx >= 0) {
                   const int nMatchLenCost = (k <= LEAVE_ALONE_MATCH_SIZE) ? salvador_cost_for_len[k - 1] : (salvador_get_match_varlen_size_norep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
-                  int nCodingChoiceCost = nMatchLenCost + nNoRepmatchOffsetCost;
+                  const int nCodingChoiceCost = nMatchLenCost + nNoRepmatchOffsetCost;
 
                   if (nCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 2].cost ||
                      (nCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 2].cost && nNoRepmatchScore < (pDestSlots[nArrivalsPerPosition - 2].score))) {
@@ -557,40 +552,38 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                         }
 
                         if (!exists) {
-                           if (n < nArrivalsPerPosition - 1) {
-                              int nn;
+                           int nn;
 
-                              for (nn = n;
-                                 nn < nArrivalsPerPosition && pDestSlots[nn].cost == nCodingChoiceCost;
-                                 nn++) {
-                                 if (pDestSlots[nn].rep_offset == nMatchOffset) {
-                                    exists = 1;
+                           for (nn = n;
+                              nn < nArrivalsPerPosition && pDestSlots[nn].cost == nCodingChoiceCost;
+                              nn++) {
+                              if (pDestSlots[nn].rep_offset == nMatchOffset) {
+                                 exists = 1;
+                                 break;
+                              }
+                           }
+
+                           if (!exists) {
+                              int z;
+
+                              for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
+                                 if (pDestSlots[z].rep_offset == nMatchOffset)
                                     break;
-                                 }
                               }
 
-                              if (!exists) {
-                                 int z;
+                              memmove(&pDestSlots[n + 1],
+                                 &pDestSlots[n],
+                                 sizeof(salvador_arrival) * (z - n));
 
-                                 for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
-                                    if (pDestSlots[z].rep_offset == nMatchOffset)
-                                       break;
-                                 }
-
-                                 memmove(&pDestSlots[n + 1],
-                                    &pDestSlots[n],
-                                    sizeof(salvador_arrival) * (z - n));
-
-                                 salvador_arrival* pDestArrival = &pDestSlots[n];
-                                 pDestArrival->cost = nCodingChoiceCost;
-                                 pDestArrival->from_pos = i;
-                                 pDestArrival->from_slot = nNonRepMatchArrivalIdx + 1;
-                                 pDestArrival->match_len = k;
-                                 pDestArrival->num_literals = 0;
-                                 pDestArrival->score = nNoRepmatchScore;
-                                 pDestArrival->rep_offset = nMatchOffset;
-                                 pDestArrival->rep_pos = i;
-                              }
+                              salvador_arrival* pDestArrival = &pDestSlots[n];
+                              pDestArrival->cost = nCodingChoiceCost;
+                              pDestArrival->from_pos = i;
+                              pDestArrival->from_slot = nNonRepMatchArrivalIdx + 1;
+                              pDestArrival->rep_offset = nMatchOffset;
+                              pDestArrival->rep_pos = i;
+                              pDestArrival->match_len = k;
+                              pDestArrival->num_literals = 0;
+                              pDestArrival->score = nNoRepmatchScore;
                            }
                         }
                      }
@@ -602,11 +595,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                if (k > nOverallMinRepLen && k <= nOverallMaxRepLen) {
                   const int nMatchLenCost = (k <= LEAVE_ALONE_MATCH_SIZE) ? salvador_cost_for_len[k] : (salvador_get_match_varlen_size_rep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
                   int nCurRepMatchArrival;
-
-                  if (k <= LEAVE_ALONE_MATCH_SIZE)
-                     nOverallMinRepLen = k;
-                  else if (nOverallMaxRepLen == k)
-                     nOverallMaxRepLen--;
 
                   for (nCurRepMatchArrival = 0; (j = nRepMatchArrivalIdx[nCurRepMatchArrival]) >= 0; nCurRepMatchArrival += 2) {
                      if (nRepMatchArrivalIdx[nCurRepMatchArrival + 1] >= k) {
@@ -666,11 +654,11 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                                     pDestArrival->cost = nRepCodingChoiceCost;
                                     pDestArrival->from_pos = i;
                                     pDestArrival->from_slot = j + 1;
+                                    pDestArrival->rep_offset = nRepOffset;
+                                    pDestArrival->rep_pos = i;
                                     pDestArrival->match_len = k;
                                     pDestArrival->num_literals = 0;
                                     pDestArrival->score = nScore;
-                                    pDestArrival->rep_offset = nRepOffset;
-                                    pDestArrival->rep_pos = i;
                                  }
                               }
                            }
@@ -680,6 +668,11 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                         }
                      }
                   }
+
+                  if (k <= LEAVE_ALONE_MATCH_SIZE)
+                     nOverallMinRepLen = k;
+                  else if (nOverallMaxRepLen == k)
+                     nOverallMaxRepLen--;
                }
             }
          }
@@ -1242,7 +1235,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             pCompressor->stats.literals_divisor++;
 
             if (!nIsFirstCommand) {
-               nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 0 /* literals follow */, 1, nCurBitsOffset, nCurBitShift);
+               nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 0 /* literals follow */, nCurBitsOffset, nCurBitShift);
                if (nOutOffset < 0) return -1;
             }
             else {
@@ -1261,7 +1254,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
 
          if (nMatchOffset == nRepMatchOffset && nNumLiterals != 0) {
             /* Rep match */
-            nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 0 /* rep match */, 1, nCurBitsOffset, nCurBitShift);
+            nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 0 /* rep match */, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
 
             /* Write match length */
@@ -1270,7 +1263,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
          }
          else {
             /* Match with offset */
-            nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 1 /* match with offset */, 1, nCurBitsOffset, nCurBitShift);
+            nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 1 /* match with offset */, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
 
             /* Write high bits of match offset */
@@ -1357,7 +1350,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
          /* Final Literals */
 
          if (!nIsFirstCommand) {
-            nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 0 /* literals follow */, 1, nCurBitsOffset, nCurBitShift);
+            nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 0 /* literals follow */, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
          }
          else {
@@ -1375,7 +1368,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
          nNumLiterals = 0;
       }
 
-      nOutOffset = salvador_write_bits(pOutData, nOutOffset, nMaxOutDataSize, 1 /* match with offset */, 1, nCurBitsOffset, nCurBitShift);
+      nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 1 /* match with offset */, nCurBitsOffset, nCurBitShift);
       if (nOutOffset < 0) return -1;
 
       nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, 256 /* EOD */, nIsInverted, nCurBitsOffset, nCurBitShift, NULL);
