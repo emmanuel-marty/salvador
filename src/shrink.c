@@ -46,6 +46,31 @@ static const char salvador_cost_for_len[LEAVE_ALONE_MATCH_SIZE + 1] = {
 };
 
 /**
+ * Get the number of bits required to encode a gamma value
+ *
+ * @param nValue value to encode as gamma
+ *
+ * @return number of bits required for encoding
+ */
+static int salvador_get_elias_size(const int nValue) {
+   int i;
+   int nBits = 0;
+
+   for (i = 2; i <= nValue; i <<= 1)
+      ;
+
+   i >>= 1;
+   while ((i >>= 1) > 0) {
+      nBits++;
+      nBits++;
+   }
+
+   nBits++;
+
+   return nBits;
+}
+
+/**
  * Write bitpacked value to output (compressed) buffer
  *
  * @param pOutData pointer to output buffer
@@ -77,31 +102,6 @@ static int salvador_write_bit(unsigned char *pOutData, int nOutOffset, const int
    }
 
    return nOutOffset;
-}
-
-/**
- * Get the number of bits required to encode a gamma value
- *
- * @param nValue value to encode as gamma
- *
- * @return number of bits required for encoding
- */
-static int salvador_get_elias_size(const int nValue) {
-   int i;
-   int nBits = 0;
-
-   for (i = 2; i <= nValue; i <<= 1)
-      ;
-
-   i >>= 1;
-   while ((i >>= 1) > 0) {
-      nBits++;
-      nBits++;
-   }
-
-   nBits++;
-
-   return nBits;
 }
 
 /**
@@ -158,7 +158,7 @@ static int salvador_write_elias_value(unsigned char* pOutData, int nOutOffset, c
  * @return number of extra bits required
  */
 static inline int salvador_get_literals_varlen_size(const int nLength) {
-   if (nLength > 0) {
+   if (nLength >= 0) {
       if (nLength <= LEAVE_ALONE_MATCH_SIZE)
          return salvador_cost_for_len[nLength];
       else
@@ -166,20 +166,6 @@ static inline int salvador_get_literals_varlen_size(const int nLength) {
    }
    else
       return 0;
-}
-
-/**
- * Write extra literals length bytes to output (compressed) buffer. The caller must first check that there is enough
- * room to write the bytes.
- *
- * @param pOutData pointer to output buffer
- * @param nOutOffset current write index into output buffer
- * @param nMaxOutDataSize maximum size of output buffer, in bytes
- * @param nCurNibbleOffset write index into output buffer, of current byte being filled with nibbles
- * @param nLength literals length
- */
-static inline int salvador_write_literals_varlen(unsigned char *pOutData, int nOutOffset, const int nMaxOutDataSize, int nLength, int *nCurBitsOffset, int *nCurBitShift) {
-   return salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nLength, 0, nCurBitsOffset, nCurBitShift, NULL);
 }
 
 /**
@@ -203,22 +189,6 @@ static inline int salvador_write_literals_varlen(unsigned char *pOutData, int nO
 #define salvador_get_match_varlen_size_rep(__nLength) salvador_get_elias_size((__nLength) + 1 + 1)
 
 /**
- * Write extra encoded match length bytes to output (compressed) buffer. The caller must first check that there is enough
- * room to write the bytes.
- *
- * @param pOutData pointer to output buffer
- * @param nOutOffset current write index into output buffer
- * @param nMaxOutDataSize maximum size of output buffer, in bytes
- * @param nCurNibbleOffset write index into output buffer, of current byte being filled with nibbles
- * @param nLength encoded match length (actual match length - MIN_ENCODED_MATCH_SIZE)
- * @param nIsRepMatch 1 if writing the match length for a rep-match, 0 if writing the length for a match with an offset
- * @param nFirstBit where to store first bit, NULL to write all bits out normally
- */
-static inline int salvador_write_match_varlen(unsigned char *pOutData, int nOutOffset, const int nMaxOutDataSize, int nLength, int nIsRepMatch, int* nCurBitsOffset, int* nCurBitShift, unsigned char* nFirstBit) {
-   return salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nLength + 1 + (nIsRepMatch ? 1 : 0), 0, nCurBitsOffset, nCurBitShift, nFirstBit);
-}
-
-/**
  * Insert forward rep candidate
  *
  * @param pCompressor compression context
@@ -237,10 +207,10 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
 
    for (j = 0; j < NARRIVALS_PER_POSITION && arrival[j].from_slot; j++) {
       if (arrival[j].num_literals) {
-         int nRepOffset = arrival[j].rep_offset;
+         const int nRepOffset = arrival[j].rep_offset;
 
          if (nMatchOffset != nRepOffset && nRepOffset) {
-            int nRepPos = arrival[j].rep_pos;
+            const int nRepPos = arrival[j].rep_pos;
 
             if (nRepPos >= nStartOffset &&
                nRepPos < nEndOffset &&
@@ -448,8 +418,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                      if (pInWindow[i] == pInWindow[i - nRepOffset]) {
                         const unsigned char* pInWindowAtPos;
 
-                        int nLen0 = rle_len[i - nRepOffset];
-                        int nLen1 = rle_len[i];
+                        const int nLen0 = rle_len[i - nRepOffset];
+                        const int nLen1 = rle_len[i];
                         int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
 
                         if (nMinLen > nMaxRepLenForPos)
@@ -499,7 +469,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
             int nNonRepMatchArrivalIdx = -1;
             for (j = 0; j < nNumArrivalsForThisPos; j++) {
-               int nRepOffset = cur_arrival[j].rep_offset;
+               const int nRepOffset = cur_arrival[j].rep_offset;
 
                if (nMatchOffset != nRepOffset || cur_arrival[j].num_literals == 0) {
                   const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
@@ -599,8 +569,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                   for (nCurRepMatchArrival = 0; (j = nRepMatchArrivalIdx[nCurRepMatchArrival]) >= 0; nCurRepMatchArrival += 2) {
                      if (nRepMatchArrivalIdx[nCurRepMatchArrival + 1] >= k) {
                         const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
-                        int nRepCodingChoiceCost = nPrevCost /* the actual cost of the literals themselves accumulates up the chain */ + nMatchLenCost;
-                        int nScore = cur_arrival[j].score + 2;
+                        const int nRepCodingChoiceCost = nPrevCost /* the actual cost of the literals themselves accumulates up the chain */ + nMatchLenCost;
+                        const int nScore = cur_arrival[j].score + 2;
 
                         if (nRepCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
                            (nRepCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 1].cost && nScore < (pDestSlots[nArrivalsPerPosition - 1].score))) {
@@ -1243,7 +1213,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
                nIsFirstCommand = 0;
             }
 
-            nOutOffset = salvador_write_literals_varlen(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, nCurBitsOffset, nCurBitShift);
+            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, 0, nCurBitsOffset, nCurBitShift, NULL);
             if (nOutOffset < 0) return -1;
 
             if ((nOutOffset + nNumLiterals) > nMaxOutDataSize)
@@ -1258,7 +1228,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             if (nOutOffset < 0) return -1;
 
             /* Write match length */
-            nOutOffset = salvador_write_match_varlen(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen, 1, nCurBitsOffset, nCurBitShift, NULL);
+            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen + 1 + 1, 0, nCurBitsOffset, nCurBitShift, NULL);
             if (nOutOffset < 0) return -1;
          }
          else {
@@ -1277,7 +1247,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             pOutData[nOutOffset++] = (255 - ((nMatchOffset - 1) & 0x7f)) << 1;
 
             /* Write match length */
-            nOutOffset = salvador_write_match_varlen(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen, 0, nCurBitsOffset, nCurBitShift, pFirstBit);
+            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen + 1, 0, nCurBitsOffset, nCurBitShift, pFirstBit);
             if (nOutOffset < 0) return -1;
          }
 
@@ -1358,7 +1328,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             nIsFirstCommand = 0;
          }
 
-         nOutOffset = salvador_write_literals_varlen(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, nCurBitsOffset, nCurBitShift);
+         nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, 0, nCurBitsOffset, nCurBitShift, NULL);
          if (nOutOffset < 0) return -1;
 
          if ((nOutOffset + nNumLiterals) > nMaxOutDataSize)
