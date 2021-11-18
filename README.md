@@ -16,6 +16,7 @@ Decompression code:
  * [z80](https://github.com/einar-saukas/ZX0/tree/main/z80) by Einar Saukas, Urusergi and spke.
  * [8088](https://github.com/emmanuel-marty/unzx0_x86) by Emmanuel Marty. 
  * [68000](https://github.com/emmanuel-marty/unzx0_68000) by Emmanuel Marty. 
+ * [6809 and 6309](https://github.com/dougmasten/zx0-6x09) by Doug Masten. Use the -classic flag to compress data for the 6809 or 6309 depackers.
 
 License:
 
