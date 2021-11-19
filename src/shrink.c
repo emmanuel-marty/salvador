@@ -887,7 +887,6 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
          if ((i + pMatch->length) < nEndOffset && pMatch->offset > 0 && pMatch->length >= MIN_ENCODED_MATCH_SIZE &&
             pBestMatch[i + pMatch->length].offset > 0 &&
             pBestMatch[i + pMatch->length].length >= MIN_ENCODED_MATCH_SIZE &&
-            (pMatch->length + pBestMatch[i + pMatch->length].length) >= LEAVE_ALONE_MATCH_SIZE &&
             (pMatch->length + pBestMatch[i + pMatch->length].length) <= MAX_VARLEN &&
             (i + pMatch->length) > pMatch->offset &&
             (i + pMatch->length) > pBestMatch[i + pMatch->length].offset &&
