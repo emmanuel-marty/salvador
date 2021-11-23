@@ -351,17 +351,16 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       for (j = 0; j < nArrivalsPerPosition && cur_arrival[j].from_slot; j++) {
          const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
          int nCodingChoiceCost = nPrevCost + 8 /* literal */;
-         int nScore = cur_arrival[j].score + 1;
-         int nNumLiterals = cur_arrival[j].num_literals + 1;
+         const int nScore = cur_arrival[j].score + 1;
+         const int nNumLiterals = cur_arrival[j].num_literals + 1;
 
-         if (nNumLiterals > 1)
-            nCodingChoiceCost -= salvador_get_literals_varlen_size(nNumLiterals - 1);
-         nCodingChoiceCost += salvador_get_literals_varlen_size(nNumLiterals);
+         if ((nNumLiterals & (nNumLiterals - 1)) == 0)
+            nCodingChoiceCost += 2;
 
          salvador_arrival* pDestSlots = &cur_arrival[NARRIVALS_PER_POSITION];
          if (nCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
             (nCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 1].cost && nScore < (pDestSlots[nArrivalsPerPosition - 1].score))) {
-            int nRepOffset = cur_arrival[j].rep_offset;
+            const int nRepOffset = cur_arrival[j].rep_offset;
             int exists = 0;
 
             for (n = 0;
@@ -442,7 +441,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
          for (j = 0; j < nNumArrivalsForThisPos; j++) {
             if (cur_arrival[j].num_literals) {
-               int nRepOffset = cur_arrival[j].rep_offset;
+               const int nRepOffset = cur_arrival[j].rep_offset;
 
                if (nRepOffset) {
                   if (i >= nRepOffset) {
@@ -605,7 +604,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
                         if (nRepCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
                            (nRepCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 1].cost && nScore < (pDestSlots[nArrivalsPerPosition - 1].score))) {
-                           int nRepOffset = cur_arrival[j].rep_offset;
+                           const int nRepOffset = cur_arrival[j].rep_offset;
                            int exists = 0;
 
                            for (n = 0;
