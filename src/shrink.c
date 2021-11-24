@@ -240,7 +240,7 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
       if (arrival[j].num_literals) {
          const int nRepOffset = arrival[j].rep_offset;
 
-         if (nMatchOffset != nRepOffset && nRepOffset) {
+         if (nMatchOffset != nRepOffset) {
             const int nRepPos = arrival[j].rep_pos;
 
             if (nRepPos >= nStartOffset &&
@@ -255,7 +255,7 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                   if (pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset]) {
                      visited[nRepPos].inner = nMatchOffset;
 
-                     if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0) {
+                     if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0 && nRepOffset) {
                         const int nLen0 = rle_len[nRepPos - nMatchOffset];
                         const int nLen1 = rle_len[nRepPos];
                         int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
@@ -677,7 +677,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
             }
          }
 
-         if (nOrigMatchLen >= 512 && ((m + 1) >= NMATCHES_PER_INDEX || match[m + 1].length < 512))
+         if (nOrigMatchLen >= 1280 && ((m + 1) >= NMATCHES_PER_INDEX || match[m + 1].length < 512))
             break;
       }
    }
