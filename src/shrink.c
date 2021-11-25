@@ -1671,13 +1671,8 @@ static int salvador_compressor_init(salvador_compressor *pCompressor, const int 
                            if (pCompressor->first_offset_for_byte) {
                               pCompressor->next_offset_for_pos = (int*)malloc(nBlockSize * sizeof(int));
                               if (pCompressor->next_offset_for_pos) {
-                                 if (nMaxArrivals == NARRIVALS_PER_POSITION) {
-                                    pCompressor->offset_cache = (int*)malloc(2048 * sizeof(int));
-                                    if (pCompressor->offset_cache) {
-                                       return 0;
-                                    }
-                                 }
-                                 else {
+                                 pCompressor->offset_cache = (int*)malloc(2048 * sizeof(int));
+                                 if (pCompressor->offset_cache) {
                                     return 0;
                                  }
                               }
