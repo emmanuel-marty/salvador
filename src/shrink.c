@@ -136,7 +136,7 @@ static int salvador_write_bit(unsigned char *pOutData, int nOutOffset, const int
 }
 
 /**
- * Write elias gamma encoded value to output (compressed) buffer
+ * Write possibly inverted elias gamma encoded value to output (compressed) buffer
  *
  * @param pOutData pointer to output buffer
  * @param nOutOffset current write index into output buffer
@@ -145,11 +145,43 @@ static int salvador_write_bit(unsigned char *pOutData, int nOutOffset, const int
  * @param nIsInverted 1 to write inverted match offset encoding (V2), 0 to write V1 encoding
  * @param nCurBitsOffset write index into output buffer, of current byte being filled with bits
  * @param nCurBitShift bit shift count
+ *
+ * @return updated write index into output buffer, or -1 in case of an error
+ */
+static int salvador_write_normal_elias_value(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, const int nIsInverted, int* nCurBitsOffset, int* nCurBitShift) {
+   int i;
+
+   for (i = 2; i <= nValue; i <<= 1)
+      ;
+
+   i >>= 1;
+   while ((i >>= 1) > 0) {
+      nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 0, nCurBitsOffset, nCurBitShift);
+      if (nIsInverted)
+         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 0 : 1, nCurBitsOffset, nCurBitShift);
+      else
+         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, nCurBitsOffset, nCurBitShift);
+   }
+
+   nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 1, nCurBitsOffset, nCurBitShift);
+
+   return nOutOffset;
+}
+
+/**
+ * Write elias gamma encoded value to output (compressed) buffer, with the first bit possibly stored in a different (match offset) byte
+ *
+ * @param pOutData pointer to output buffer
+ * @param nOutOffset current write index into output buffer
+ * @param nMaxOutDataSize maximum size of output buffer, in bytes
+ * @param nValue value to write with gamma encoding
+ * @param nCurBitsOffset write index into output buffer, of current byte being filled with bits
+ * @param nCurBitShift bit shift count
  * @param nFirstBit where to store first bit, NULL to write all bits out normally
  *
  * @return updated write index into output buffer, or -1 in case of an error
  */
-static int salvador_write_elias_value(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, const int nIsInverted, int* nCurBitsOffset, int* nCurBitShift, unsigned char* nFirstBit) {
+static int salvador_write_split_elias_value(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, int* nCurBitsOffset, int* nCurBitShift, unsigned char* nFirstBit) {
    int i;
 
    for (i = 2; i <= nValue; i <<= 1)
@@ -164,10 +196,7 @@ static int salvador_write_elias_value(unsigned char* pOutData, int nOutOffset, c
       else {
          nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 0, nCurBitsOffset, nCurBitShift);
       }
-      if (nIsInverted)
-         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 0 : 1, nCurBitsOffset, nCurBitShift);
-      else
-         nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, nCurBitsOffset, nCurBitShift);
+      nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, nCurBitsOffset, nCurBitShift);
    }
 
    if (nFirstBit) {
@@ -1234,7 +1263,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
                nIsFirstCommand = 0;
             }
 
-            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, 0, nCurBitsOffset, nCurBitShift, NULL);
+            nOutOffset = salvador_write_normal_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, 0, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
 
             if ((nOutOffset + nNumLiterals) > nMaxOutDataSize)
@@ -1249,7 +1278,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             if (nOutOffset < 0) return -1;
 
             /* Write match length */
-            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen + 1 + 1, 0, nCurBitsOffset, nCurBitShift, NULL);
+            nOutOffset = salvador_write_normal_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen + 1 + 1, 0, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
          }
          else {
@@ -1258,7 +1287,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             if (nOutOffset < 0) return -1;
 
             /* Write high bits of match offset */
-            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, ((nMatchOffset - 1) >> 7) + 1, nIsInverted, nCurBitsOffset, nCurBitShift, NULL);
+            nOutOffset = salvador_write_normal_elias_value(pOutData, nOutOffset, nMaxOutDataSize, ((nMatchOffset - 1) >> 7) + 1, nIsInverted, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
 
             /* Write low byte of match offset */
@@ -1268,7 +1297,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             pOutData[nOutOffset++] = (255 - ((nMatchOffset - 1) & 0x7f)) << 1;
 
             /* Write match length */
-            nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen + 1, 0, nCurBitsOffset, nCurBitShift, pFirstBit);
+            nOutOffset = salvador_write_split_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nEncodedMatchLen + 1, nCurBitsOffset, nCurBitShift, pFirstBit);
             if (nOutOffset < 0) return -1;
          }
 
@@ -1349,7 +1378,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
             nIsFirstCommand = 0;
          }
 
-         nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, 0, nCurBitsOffset, nCurBitShift, NULL);
+         nOutOffset = salvador_write_normal_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, 0, nCurBitsOffset, nCurBitShift);
          if (nOutOffset < 0) return -1;
 
          if ((nOutOffset + nNumLiterals) > nMaxOutDataSize)
@@ -1362,7 +1391,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, salvador_final
       nOutOffset = salvador_write_bit(pOutData, nOutOffset, nMaxOutDataSize, 1 /* match with offset */, nCurBitsOffset, nCurBitShift);
       if (nOutOffset < 0) return -1;
 
-      nOutOffset = salvador_write_elias_value(pOutData, nOutOffset, nMaxOutDataSize, 256 /* EOD */, nIsInverted, nCurBitsOffset, nCurBitShift, NULL);
+      nOutOffset = salvador_write_normal_elias_value(pOutData, nOutOffset, nMaxOutDataSize, 256 /* EOD */, nIsInverted, nCurBitsOffset, nCurBitShift);
       if (nOutOffset < 0) return -1;
 
       pCompressor->stats.num_eod++;
