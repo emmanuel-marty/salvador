@@ -17,6 +17,8 @@ Decompression code:
  * [8088](https://github.com/emmanuel-marty/unzx0_x86) by Emmanuel Marty. 
  * [68000](https://github.com/emmanuel-marty/unzx0_68000) by Emmanuel Marty. 
  * [6809 and 6309](https://github.com/dougmasten/zx0-6x09) by Doug Masten. Use the -classic flag to compress data for the 6809 or 6309 depackers.
+ * [6502](https://atariage.com/forums/topic/291154-any-compressor-between-rle-and-lz4/?do=findComment&comment=4950764) by John Brandwood. Use the -classic flag to compress data for the 6502.
+ * [HuC6280](https://github.com/jbrandwood/huc/blob/master/examples/asm/elmer/include/unpack-zx0.asm) by John Brandwood. Use the -classic flag for this platform as well.
 
 License:
 
