@@ -11,14 +11,17 @@ salvador is written in portable C. It is fully open-source under a liberal licen
 
 The output is fully compatible with the [ZX0](https://github.com/einar-saukas/ZX0) compressor by Einar Saukas.
 
-Decompression code:
+Included 8-bit decompression code:
+
+ * [8088](https://github.com/emmanuel-marty/salvador/tree/main/asm/8088) by Emmanuel Marty. 
+ * [68000](https://github.com/emmanuel-marty/salvador/tree/main/asm/68000) by Emmanuel Marty. 
+ * [6502](https://github.com/emmanuel-marty/salvador/tree/main/asm/6502) by John Brandwood. Use the -classic flag to compress data for the 6502.
+ * [HuC6280](https://github.com/emmanuel-marty/salvador/tree/main/asm/HuC6280) by John Brandwood. Use the -classic flag for this platform as well.
+
+External decompression code:
 
  * [z80](https://github.com/einar-saukas/ZX0/tree/main/z80) by Einar Saukas, Urusergi and spke.
- * [8088](https://github.com/emmanuel-marty/unzx0_x86) by Emmanuel Marty. 
- * [68000](https://github.com/emmanuel-marty/unzx0_68000) by Emmanuel Marty. 
  * [6809 and 6309](https://github.com/dougmasten/zx0-6x09) by Doug Masten. Use the -classic flag to compress data for the 6809 or 6309 depackers.
- * [6502](https://atariage.com/forums/topic/291154-any-compressor-between-rle-and-lz4/?do=findComment&comment=4950764) by John Brandwood. Use the -classic flag to compress data for the 6502.
- * [HuC6280](https://github.com/jbrandwood/huc/blob/master/examples/asm/elmer/include/unpack-zx0.asm) by John Brandwood. Use the -classic flag for this platform as well.
 
 License:
 
