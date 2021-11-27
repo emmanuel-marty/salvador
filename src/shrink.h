@@ -51,7 +51,7 @@ extern "C" {
 #define NMATCHES_PER_INDEX 64
 #define MATCHES_PER_INDEX_SHIFT 6
 
-#define LEAVE_ALONE_MATCH_SIZE 300
+#define LEAVE_ALONE_MATCH_SIZE 340
 
 /** One match option */
 typedef struct _salvador_match {
