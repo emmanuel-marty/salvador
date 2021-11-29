@@ -749,34 +749,42 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
    for (i = nStartOffset + ((nBlockFlags & 1) ? 1 : 0); i < nEndOffset; ) {
       salvador_final_match *pMatch = pBestMatch + i;
 
-      if (nNumLiterals != 0 &&
-         pMatch->length == 0 &&
+      if (pMatch->length == 0 &&
          (i + 1) < nEndOffset &&
          pBestMatch[i + 1].length >= MIN_ENCODED_MATCH_SIZE &&
          pBestMatch[i + 1].length < MAX_VARLEN &&
          pBestMatch[i + 1].offset &&
          i >= pBestMatch[i + 1].offset &&
          (i + pBestMatch[i + 1].length + 1) <= nEndOffset &&
+         (nNumLiterals != 0 || pBestMatch[i + 1].offset != nRepMatchOffset) &&
          !memcmp(pInWindow + i - (pBestMatch[i + 1].offset), pInWindow + i, pBestMatch[i + 1].length + 1)) {
          int nCurLenSize, nReducedLenSize;
+         int nCannotEncode = 0;
 
-         if (nRepMatchOffset && pBestMatch[i + 1].offset == nRepMatchOffset) {
+         if (nRepMatchOffset && nNumLiterals != 0 && pBestMatch[i + 1].offset == nRepMatchOffset) {
             nCurLenSize = salvador_get_match_varlen_size_rep(pBestMatch[i + 1].length - MIN_ENCODED_MATCH_SIZE);
             nReducedLenSize = salvador_get_match_varlen_size_rep(pBestMatch[i + 1].length + 1 - MIN_ENCODED_MATCH_SIZE);
          }
          else {
-            nCurLenSize = salvador_get_match_varlen_size_norep(pBestMatch[i + 1].length - MIN_ENCODED_MATCH_SIZE);
-            nReducedLenSize = salvador_get_match_varlen_size_norep(pBestMatch[i + 1].length + 1 - MIN_ENCODED_MATCH_SIZE);
+            if (nNumLiterals != 0 || pBestMatch[i + 1].offset != nRepMatchOffset) {
+               nCurLenSize = salvador_get_match_varlen_size_norep(pBestMatch[i + 1].length - MIN_ENCODED_MATCH_SIZE);
+               nReducedLenSize = salvador_get_match_varlen_size_norep(pBestMatch[i + 1].length + 1 - MIN_ENCODED_MATCH_SIZE);
+            }
+            else {
+               nCannotEncode = 1;
+            }
          }
 
-         if ((nReducedLenSize - nCurLenSize) <= 8) {
-            /* Merge */
-            pBestMatch[i].length = pBestMatch[i + 1].length + 1;
-            pBestMatch[i].offset = pBestMatch[i + 1].offset;
-            pBestMatch[i + 1].length = 0;
-            pBestMatch[i + 1].offset = 0;
-            nDidReduce = 1;
-            continue;
+         if (!nCannotEncode) {
+            if ((nReducedLenSize - nCurLenSize) <= 8) {
+               /* Merge */
+               pBestMatch[i].length = pBestMatch[i + 1].length + 1;
+               pBestMatch[i].offset = pBestMatch[i + 1].offset;
+               pBestMatch[i + 1].length = 0;
+               pBestMatch[i + 1].offset = 0;
+               nDidReduce = 1;
+               continue;
+            }
          }
       }
 
