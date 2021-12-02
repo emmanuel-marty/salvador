@@ -424,7 +424,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
    salvador_arrival *arrival = pCompressor->arrival - (nStartOffset * NARRIVALS_PER_POSITION);
    const int* rle_len = (int*)pCompressor->intervals /* reuse */;
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
-   int i, j, n;
+   int i;
 
    if ((nEndOffset - nStartOffset) > pCompressor->block_size) return;
 
@@ -443,7 +443,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
    for (i = nStartOffset; i != nEndOffset; i++) {
       salvador_arrival *cur_arrival = &arrival[i * NARRIVALS_PER_POSITION];
-      int m;
+      salvador_arrival *pDestLiteralSlots = &cur_arrival[NARRIVALS_PER_POSITION];
+      int j, m;
       
       for (j = 0; j < nArrivalsPerPosition && cur_arrival[j].from_slot; j++) {
          const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
@@ -454,16 +455,15 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
          if ((nNumLiterals & (nNumLiterals - 1)) == 0)
             nCodingChoiceCost += 2;
 
-         salvador_arrival* pDestSlots = &cur_arrival[NARRIVALS_PER_POSITION];
-         if (nCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
-            (nCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 1].cost && nScore < (pDestSlots[nArrivalsPerPosition - 1].score))) {
+         if (nCodingChoiceCost < pDestLiteralSlots[nArrivalsPerPosition - 1].cost ||
+            (nCodingChoiceCost == pDestLiteralSlots[nArrivalsPerPosition - 1].cost && nScore < (pDestLiteralSlots[nArrivalsPerPosition - 1].score))) {
             const int nRepOffset = cur_arrival[j].rep_offset;
-            int exists = 0;
+            int exists = 0, n;
 
             for (n = 0;
-               pDestSlots[n].cost < nCodingChoiceCost;
+               pDestLiteralSlots[n].cost < nCodingChoiceCost;
                n++) {
-               if (pDestSlots[n].rep_offset == nRepOffset) {
+               if (pDestLiteralSlots[n].rep_offset == nRepOffset) {
                   exists = 1;
                   break;
                }
@@ -471,9 +471,9 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
             if (!exists) {
                for (;
-                  pDestSlots[n].cost == nCodingChoiceCost && nScore >= (pDestSlots[n].score);
+                  pDestLiteralSlots[n].cost == nCodingChoiceCost && nScore >= (pDestLiteralSlots[n].score);
                   n++) {
-                  if (pDestSlots[n].rep_offset == nRepOffset) {
+                  if (pDestLiteralSlots[n].rep_offset == nRepOffset) {
                      exists = 1;
                      break;
                   }
@@ -483,9 +483,9 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                   int nn;
 
                   for (nn = n;
-                     nn < nArrivalsPerPosition && pDestSlots[nn].cost == nCodingChoiceCost;
+                     nn < nArrivalsPerPosition && pDestLiteralSlots[nn].cost == nCodingChoiceCost;
                      nn++) {
-                     if (pDestSlots[nn].rep_offset == nRepOffset) {
+                     if (pDestLiteralSlots[nn].rep_offset == nRepOffset) {
                         exists = 1;
                         break;
                      }
@@ -494,16 +494,16 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                   if (!exists) {
                      int z;
 
-                     for (z = n; z < nArrivalsPerPosition - 1 && pDestSlots[z].from_slot; z++) {
-                        if (pDestSlots[z].rep_offset == nRepOffset)
+                     for (z = n; z < nArrivalsPerPosition - 1 && pDestLiteralSlots[z].from_slot; z++) {
+                        if (pDestLiteralSlots[z].rep_offset == nRepOffset)
                            break;
                      }
 
-                     memmove(&pDestSlots[n + 1],
-                        &pDestSlots[n],
+                     memmove(&pDestLiteralSlots[n + 1],
+                        &pDestLiteralSlots[n],
                         sizeof(salvador_arrival) * (z - n));
 
-                     salvador_arrival* pDestArrival = &pDestSlots[n];
+                     salvador_arrival* pDestArrival = &pDestLiteralSlots[n];
                      pDestArrival->cost = nCodingChoiceCost;
                      pDestArrival->from_pos = i;
                      pDestArrival->from_slot = j + 1;
@@ -627,7 +627,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
                   if (nCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 2].cost ||
                      (nCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 2].cost && nNoRepmatchScore < (pDestSlots[nArrivalsPerPosition - 2].score))) {
-                     int exists = 0;
+                     int exists = 0, n;
 
                      for (n = 0;
                         pDestSlots[n].cost < nCodingChoiceCost;
@@ -702,7 +702,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                         if (nRepCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
                            (nRepCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 1].cost && nScore < (pDestSlots[nArrivalsPerPosition - 1].score))) {
                            const int nRepOffset = cur_arrival[j].rep_offset;
-                           int exists = 0;
+                           int exists = 0, n;
 
                            for (n = 0;
                               pDestSlots[n].cost < nRepCodingChoiceCost;
