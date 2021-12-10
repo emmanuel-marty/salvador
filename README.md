@@ -15,12 +15,12 @@ Included 8-bit decompression code:
 
  * [8088](https://github.com/emmanuel-marty/salvador/tree/main/asm/8088) by Emmanuel Marty. 
  * [68000](https://github.com/emmanuel-marty/salvador/tree/main/asm/68000) by Emmanuel Marty. 
+ * [z80](https://github.com/emmanuel-marty/salvador/tree/main/asm/Z80) by spke and uniabis. Use the -classic flag to compress data for the Z80.
  * [6502](https://github.com/emmanuel-marty/salvador/tree/main/asm/6502) by John Brandwood. Use the -classic flag to compress data for the 6502.
  * [HuC6280](https://github.com/emmanuel-marty/salvador/tree/main/asm/HuC6280) by John Brandwood. Use the -classic flag for this platform as well.
 
 External decompression code:
 
- * [z80](https://github.com/einar-saukas/ZX0/tree/main/z80) by Einar Saukas, Urusergi and spke.
  * [6809 and 6309](https://github.com/dougmasten/zx0-6x09) by Doug Masten. Use the -classic flag to compress data for the 6809 or 6309 depackers.
 
 License:
