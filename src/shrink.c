@@ -964,7 +964,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                      nCurCommandSize += salvador_get_literals_varlen_size(nNumLiterals);
                      nCurCommandSize += (nNumLiterals << 3);
                   }
-                  if (nRepMatchOffset && pMatch->offset == nRepMatchOffset && nNumLiterals != 0) {
+                  if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
                      /* Rep match */
                      nCurCommandSize += 1; /* rep-match follows */
 
@@ -1076,7 +1076,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
 
             int nCurPartialSize = 0;
-            if (nRepMatchOffset && pMatch->offset == nRepMatchOffset && nNumLiterals != 0) {
+            if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
                /* Rep match */
                nCurPartialSize += 1; /* rep-match follows */
 
@@ -1133,7 +1133,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
 
             int nReducedPartialSize = 0;
-            if (nRepMatchOffset && pMatch->offset == nRepMatchOffset && nNumLiterals != 0) {
+            if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
                /* Rep match */
                nReducedPartialSize += 1; /* rep-match follows */
 
@@ -1196,7 +1196,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
          }
 
-         if (nNumLiterals != 0 && nRepMatchOffset && pMatch->offset != nRepMatchOffset && pMatch->length == MIN_ENCODED_MATCH_SIZE) {
+         if (nNumLiterals != 0 && pMatch->offset != nRepMatchOffset && pMatch->length == MIN_ENCODED_MATCH_SIZE && nRepMatchOffset) {
             if ((i + pMatch->length) < nEndOffset) {
                int nNextIndex = i + pMatch->length;
                int nNextLiterals = 0;
