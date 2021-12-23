@@ -323,7 +323,7 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
    int j;
 
-   for (j = 0; j < NMAX_ARRIVALS_PER_POSITION && arrival[j].from_slot; j++) {
+   for (j = 0; j < NINITIAL_ARRIVALS_PER_POSITION && arrival[j].from_slot; j++) {
       if (arrival[j].num_literals) {
          const int nRepOffset = arrival[j].rep_offset;
 
@@ -1738,12 +1738,13 @@ static void salvador_compressor_destroy(salvador_compressor *pCompressor);
  * @param pCompressor compression context to initialize
  * @param nBlockSize maximum size of input data (bytes to compress only)
  * @param nMaxWindowSize maximum size of input data window (previously compressed bytes + bytes to compress)
+ * @param nMaxOffset maximum match offset to use (0 for default)
  * @param nMaxArrivals maximum number of arrivals per position
  * @param nFlags compression flags
  *
  * @return 0 for success, non-zero for failure
  */
-static int salvador_compressor_init(salvador_compressor *pCompressor, const int nBlockSize, const int nMaxWindowSize, const int nMaxArrivals, const int nFlags) {
+static int salvador_compressor_init(salvador_compressor *pCompressor, const int nBlockSize, const int nMaxWindowSize, const size_t nMaxOffset, const int nMaxArrivals, const int nFlags) {
    int nResult;
 
    nResult = divsufsort_init(&pCompressor->divsufsort_context);
@@ -1759,6 +1760,7 @@ static int salvador_compressor_init(salvador_compressor *pCompressor, const int 
    pCompressor->offset_cache = NULL;
    pCompressor->flags = nFlags;
    pCompressor->block_size = nBlockSize;
+   pCompressor->max_offset = nMaxOffset ? (int)nMaxOffset : MAX_OFFSET;
 
    memset(&pCompressor->stats, 0, sizeof(pCompressor->stats));
    pCompressor->stats.min_match_len = -1;
@@ -1921,7 +1923,7 @@ size_t salvador_get_max_compressed_size(size_t nInputSize) {
  * @param nInputSize input(source) size in bytes
  * @param nMaxOutBufferSize maximum capacity of compression buffer
  * @param nFlags compression flags (set to FLG_IS_INVERTED)
- * @param nMaxWindowSize maximum window size to use (0 for default)
+ * @param nMaxOffset maximum match offset to use (0 for default)
  * @param nDictionarySize size of dictionary in front of input data (0 for none)
  * @param progress progress function, called after compressing each block, or NULL for none
  * @param pStats pointer to compression stats that are filled if this function is successful, or NULL
@@ -1929,7 +1931,7 @@ size_t salvador_get_max_compressed_size(size_t nInputSize) {
  * @return actual compressed size, or -1 for error
  */
 size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuffer, size_t nInputSize, size_t nMaxOutBufferSize,
-      const unsigned int nFlags, size_t nMaxWindowSize, size_t nDictionarySize, void(*progress)(long long nOriginalSize, long long nCompressedSize), salvador_stats *pStats) {
+      const unsigned int nFlags, size_t nMaxOffset, size_t nDictionarySize, void(*progress)(long long nOriginalSize, long long nCompressedSize), salvador_stats *pStats) {
    salvador_compressor compressor;
    size_t nOriginalSize = 0;
    size_t nCompressedSize = 0L;
@@ -1945,12 +1947,10 @@ size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuf
          nInDataSize = nBlockSize;
    }
 
-   nResult = salvador_compressor_init(&compressor, nBlockSize, nBlockSize * 2, nMaxArrivals, nFlags);
+   nResult = salvador_compressor_init(&compressor, nBlockSize, nBlockSize * 2, nMaxOffset, nMaxArrivals, nFlags);
    if (nResult != 0) {
       return -1;
    }
-
-   compressor.max_offset = nMaxWindowSize ? (int)nMaxWindowSize : MAX_OFFSET;
 
    int nPreviousBlockSize = 0;
    int nNumBlocks = 0;
