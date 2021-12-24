@@ -83,10 +83,7 @@ typedef struct _salvador_arrival {
 } salvador_arrival;
 
 /** Visited match */
-typedef struct _salvador_visited {
-   int outer;
-   int inner;
-} salvador_visited;
+typedef int salvador_visited;
 
 /** Compression statistics */
 typedef struct _salvador_stats {

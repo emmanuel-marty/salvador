@@ -323,16 +323,14 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
 
             if (nRepPos >= nStartOffset &&
                nRepPos < nEndOffset &&
-               visited[nRepPos].outer != nMatchOffset) {
+               visited[nRepPos] != nMatchOffset) {
 
-               visited[nRepPos].outer = nMatchOffset;
+               visited[nRepPos] = nMatchOffset;
 
-               if (visited[nRepPos].inner != nMatchOffset && nRepPos >= nMatchOffset) {
+               if (nRepPos >= nMatchOffset) {
                   const unsigned char* pInWindowAtRepOffset = pInWindow + nRepPos;
 
                   if (pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset]) {
-                     visited[nRepPos].inner = nMatchOffset;
-
                      if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0 && nRepOffset) {
                         const int nLen0 = rle_len[nRepPos - nMatchOffset];
                         const int nLen1 = rle_len[nRepPos];
