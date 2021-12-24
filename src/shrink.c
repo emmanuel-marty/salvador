@@ -113,17 +113,18 @@ static int salvador_get_elias_size(const int nValue) {
  * @return updated write index into output buffer, or -1 in case of an error
  */
 static int salvador_write_zero_ctrl_bit(unsigned char *pOutData, int nOutOffset, const int nMaxOutDataSize, int *nCurBitsOffset, int *nCurBitShift) {
-   if (nOutOffset < 0) return -1;
+   if (nOutOffset >= 0) {
+      if ((*nCurBitShift) == -1) {
+         /* Allocate a new byte in the stream to pack bits in */
+         if (nOutOffset >= nMaxOutDataSize) return -1;
+         (*nCurBitsOffset) = nOutOffset;
+         (*nCurBitShift) = 7;
+         pOutData[nOutOffset++] = 0;
+      }
 
-   if ((*nCurBitShift) == -1) {
-      /* Allocate a new byte in the stream to pack bits in */
-      if (nOutOffset >= nMaxOutDataSize) return -1;
-      (*nCurBitsOffset) = nOutOffset;
-      (*nCurBitShift) = 7;
-      pOutData[nOutOffset++] = 0;
+      (*nCurBitShift)--;
    }
 
-   (*nCurBitShift)--;
    return nOutOffset;
 }
 
@@ -139,17 +140,18 @@ static int salvador_write_zero_ctrl_bit(unsigned char *pOutData, int nOutOffset,
  * @return updated write index into output buffer, or -1 in case of an error
  */
 static int salvador_write_one_ctrl_bit(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift) {
-   if (nOutOffset < 0) return -1;
+   if (nOutOffset >= 0) {
+      if ((*nCurBitShift) == -1) {
+         /* Allocate a new byte in the stream to pack bits in */
+         if (nOutOffset >= nMaxOutDataSize) return -1;
+         (*nCurBitsOffset) = nOutOffset;
+         (*nCurBitShift) = 7;
+         pOutData[nOutOffset++] = 0;
+      }
 
-   if ((*nCurBitShift) == -1) {
-      /* Allocate a new byte in the stream to pack bits in */
-      if (nOutOffset >= nMaxOutDataSize) return -1;
-      (*nCurBitsOffset) = nOutOffset;
-      (*nCurBitShift) = 7;
-      pOutData[nOutOffset++] = 0;
+      pOutData[(*nCurBitsOffset)] |= 1 << ((*nCurBitShift)--);
    }
 
-   pOutData[(*nCurBitsOffset)] |= 1 << ((*nCurBitShift)--);
    return nOutOffset;
 }
 
@@ -166,9 +168,10 @@ static int salvador_write_one_ctrl_bit(unsigned char* pOutData, int nOutOffset, 
  * @return updated write index into output buffer, or -1 in case of an error
  */
 static int salvador_write_data_bit(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, int* nCurBitsOffset, int* nCurBitShift) {
-   if (nOutOffset < 0) return -1;
+   if (nOutOffset >= 0) {
+      pOutData[(*nCurBitsOffset)] |= nValue << ((*nCurBitShift)--);
+   }
 
-   pOutData[(*nCurBitsOffset)] |= nValue << ((*nCurBitShift)--);
    return nOutOffset;
 }
 

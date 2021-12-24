@@ -71,7 +71,7 @@ typedef struct _salvador_arrival {
    int cost;
 
    unsigned int from_pos:17;
-   int from_slot:8;
+   int from_slot:11;
 
    unsigned int rep_offset;
 
