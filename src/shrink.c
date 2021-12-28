@@ -308,7 +308,7 @@ static inline int salvador_get_literals_varlen_size(const int nLength) {
  * @param nEndOffset offset to end finding matches at (typically the size of the total input window in bytes
  * @param nDepth current insertion depth
  */
-static void salvador_insert_forward_match(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int i, const int nMatchOffset, const int nStartOffset, const int nEndOffset, int nDepth) {
+static void salvador_insert_forward_match(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int i, const int nMatchOffset, const int nStartOffset, const int nEndOffset, const int nDepth) {
    const salvador_arrival *arrival = pCompressor->arrival + ((i - nStartOffset) * NMAX_ARRIVALS_PER_POSITION);
    const int *rle_len = (int*)pCompressor->intervals /* reuse */;
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
@@ -1321,7 +1321,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
  *
  * @return size of compressed data in output buffer, or -1 if the data is uncompressible
  */
-static int salvador_write_block(salvador_compressor* pCompressor, salvador_final_match* pBestMatch, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
+static int salvador_write_block(salvador_compressor* pCompressor, const salvador_final_match* pBestMatch, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
    int nRepMatchOffset = *nCurRepMatchOffset;
    const int nMaxOffset = pCompressor->max_offset;
    const int nIsInverted = (pCompressor->flags & FLG_IS_INVERTED) ? 1 : 0;
@@ -1904,7 +1904,7 @@ static int salvador_compressor_shrink_block(salvador_compressor *pCompressor, co
  *
  * @return maximum compressed size
  */
-size_t salvador_get_max_compressed_size(size_t nInputSize) {
+size_t salvador_get_max_compressed_size(const size_t nInputSize) {
    return ((nInputSize + 65535) >> 16) * 128 + nInputSize;
 }
 
@@ -1923,8 +1923,8 @@ size_t salvador_get_max_compressed_size(size_t nInputSize) {
  *
  * @return actual compressed size, or -1 for error
  */
-size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuffer, size_t nInputSize, size_t nMaxOutBufferSize,
-      const unsigned int nFlags, size_t nMaxOffset, size_t nDictionarySize, void(*progress)(long long nOriginalSize, long long nCompressedSize), salvador_stats *pStats) {
+size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuffer, const size_t nInputSize, const size_t nMaxOutBufferSize,
+      const unsigned int nFlags, const size_t nMaxOffset, const size_t nDictionarySize, void(*progress)(long long nOriginalSize, long long nCompressedSize), salvador_stats *pStats) {
    salvador_compressor compressor;
    size_t nOriginalSize = 0;
    size_t nCompressedSize = 0L;

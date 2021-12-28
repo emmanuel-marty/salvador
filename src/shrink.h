@@ -147,7 +147,7 @@ typedef struct _salvador_compressor {
  *
  * @return maximum compressed size
  */
-size_t salvador_get_max_compressed_size(size_t nInputSize);
+size_t salvador_get_max_compressed_size(const size_t nInputSize);
 
 /**
  * Compress memory
@@ -164,8 +164,8 @@ size_t salvador_get_max_compressed_size(size_t nInputSize);
  *
  * @return actual compressed size, or -1 for error
  */
-size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuffer, size_t nInputSize, size_t nMaxOutBufferSize,
-   const unsigned int nFlags, size_t nMaxOffset, size_t nDictionarySize, void(*progress)(long long nOriginalSize, long long nCompressedSize), salvador_stats *pStats);
+size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuffer, const size_t nInputSize, const size_t nMaxOutBufferSize,
+   const unsigned int nFlags, const size_t nMaxOffset, const size_t nDictionarySize, void(*progress)(long long nOriginalSize, long long nCompressedSize), salvador_stats *pStats);
 
 #ifdef __cplusplus
 }
