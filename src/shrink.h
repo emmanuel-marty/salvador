@@ -137,6 +137,7 @@ typedef struct _salvador_compressor {
    int flags;
    int block_size;
    int max_offset;
+   int max_arrivals_per_position;
    salvador_stats stats;
 } salvador_compressor;
 
