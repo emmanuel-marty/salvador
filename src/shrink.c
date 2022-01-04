@@ -84,13 +84,16 @@ static const char salvador_cost_for_len[8192] = {
  * @return number of bits required for encoding
  */
 static int salvador_get_elias_size(const int nValue) {
-   int i;
+   int i = nValue;
    int nBits = 0;
 
-   for (i = 2; i <= nValue; i <<= 1)
-      ;
+   i |= (i >> 1);
+   i |= (i >> 2);
+   i |= (i >> 4);
+   i |= (i >> 8);
+   i |= (i >> 16);
+   i = (i - (i >> 1));
 
-   i >>= 1;
    while ((i >>= 1) > 0) {
       nBits++;
       nBits++;
@@ -188,12 +191,15 @@ static int salvador_write_data_bit(unsigned char* pOutData, int nOutOffset, cons
  * @return updated write index into output buffer, or -1 in case of an error
  */
 static int salvador_write_normal_elias_value(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, int* nCurBitsOffset, int* nCurBitShift) {
-   int i;
+   int i = nValue;
 
-   for (i = 2; i <= nValue; i <<= 1)
-      ;
+   i |= (i >> 1);
+   i |= (i >> 2);
+   i |= (i >> 4);
+   i |= (i >> 8);
+   i |= (i >> 16);
+   i = (i - (i >> 1));
 
-   i >>= 1;
    while ((i >>= 1) > 0) {
       nOutOffset = salvador_write_zero_ctrl_bit(pOutData, nOutOffset, nMaxOutDataSize, nCurBitsOffset, nCurBitShift);
       nOutOffset = salvador_write_data_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, nCurBitsOffset, nCurBitShift);
@@ -215,12 +221,15 @@ static int salvador_write_normal_elias_value(unsigned char* pOutData, int nOutOf
  * @return updated write index into output buffer, or -1 in case of an error
  */
 static int salvador_write_inverted_elias_value(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, int* nCurBitsOffset, int* nCurBitShift) {
-   int i;
+   int i = nValue;
 
-   for (i = 2; i <= nValue; i <<= 1)
-      ;
+   i |= (i >> 1);
+   i |= (i >> 2);
+   i |= (i >> 4);
+   i |= (i >> 8);
+   i |= (i >> 16);
+   i = (i - (i >> 1));
 
-   i >>= 1;
    while ((i >>= 1) > 0) {
       nOutOffset = salvador_write_zero_ctrl_bit(pOutData, nOutOffset, nMaxOutDataSize, nCurBitsOffset, nCurBitShift);
       nOutOffset = salvador_write_data_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 0 : 1, nCurBitsOffset, nCurBitShift);
@@ -242,12 +251,15 @@ static int salvador_write_inverted_elias_value(unsigned char* pOutData, int nOut
  * @return updated write index into output buffer, or -1 in case of an error
  */
 static int salvador_write_split_elias_value(unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, const int nValue, int* nCurBitsOffset, int* nCurBitShift) {
-   int i;
+   int i = nValue;
 
-   for (i = 2; i <= nValue; i <<= 1)
-      ;
+   i |= (i >> 1);
+   i |= (i >> 2);
+   i |= (i >> 4);
+   i |= (i >> 8);
+   i |= (i >> 16);
+   i = (i - (i >> 1));
 
-   i >>= 1;
    i >>= 1;
    nOutOffset = salvador_write_data_bit(pOutData, nOutOffset, nMaxOutDataSize, (nValue & i) ? 1 : 0, nCurBitsOffset, nCurBitShift);
 
@@ -1678,7 +1690,7 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
                         int nMatchLen = 2;
                         while (nMatchLen < 128 && (nPosition + nMatchLen + 4) < nEndOffset && !memcmp(pInWindow + nMatchPos + nMatchLen, pInWindow + nPosition + nMatchLen, 4))
                            nMatchLen += 4;
-                        while (nMatchLen < 128 && (nPosition + nMatchLen ) < nEndOffset && pInWindow[nMatchPos + nMatchLen] == pInWindow[nPosition + nMatchLen])
+                        while (nMatchLen < 128 && (nPosition + nMatchLen) < nEndOffset && pInWindow[nMatchPos + nMatchLen] == pInWindow[nPosition + nMatchLen])
                            nMatchLen++;
                         match[m].length = nMatchLen;
                         match[m].offset = nMatchOffset;
