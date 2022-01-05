@@ -1658,15 +1658,6 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
                      if (match[nExistingMatchIdx].offset == nMatchOffset ||
                         (match[nExistingMatchIdx].offset - (match_depth[nExistingMatchIdx] & 0x3fff)) == nMatchOffset) {
                         nAlreadyExists = 1;
-
-                        if (match_depth[nExistingMatchIdx] == 0x4000) {
-                           int nMatchLen = 2;
-                           while (nMatchLen < 128 && nPosition < (nEndOffset - nMatchLen) && pInWindow[nMatchPos + nMatchLen] == pInWindow[nPosition + nMatchLen])
-                              nMatchLen++;
-                           if (nMatchLen > (int)match[nExistingMatchIdx].length)
-                              match[nExistingMatchIdx].length = nMatchLen;
-                        }
-
                         break;
                      }
                   }
