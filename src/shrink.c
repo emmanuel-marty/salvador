@@ -322,7 +322,7 @@ static inline int salvador_get_literals_varlen_size(const int nLength) {
  */
 static void salvador_insert_forward_match(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int i, const int nMatchOffset, const int nStartOffset, const int nEndOffset, const int nDepth) {
    const salvador_arrival *arrival = pCompressor->arrival + ((i - nStartOffset) * pCompressor->max_arrivals_per_position);
-   const int *rle_len = (int*)pCompressor->intervals /* reuse */;
+   const int *rle_len = (const int*)pCompressor->intervals /* reuse */;
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
    int j;
 
@@ -365,7 +365,7 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                         while (pInWindowAtRepOffset < pInWindowMax && pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset])
                            pInWindowAtRepOffset++;
 
-                        const int nCurRepLen = (int)(pInWindowAtRepOffset - (pInWindow + nRepPos));
+                        const int nCurRepLen = (const int)(pInWindowAtRepOffset - (pInWindow + nRepPos));
 
                         salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
                         unsigned short* fwd_depth = pCompressor->match_depth + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
@@ -414,7 +414,7 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
 static void salvador_optimize_forward(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int nStartOffset, const int nEndOffset, const int nInsertForwardReps, const int *nCurRepMatchOffset, const int nArrivalsPerPosition, const int nBlockFlags) {
    const int nMaxArrivalsPerPosition = pCompressor->max_arrivals_per_position;
    salvador_arrival *arrival = pCompressor->arrival - (nStartOffset * nMaxArrivalsPerPosition);
-   const int* rle_len = (int*)pCompressor->intervals /* reuse */;
+   const int* rle_len = (const int*)pCompressor->intervals /* reuse */;
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
    int i;
 
@@ -552,7 +552,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                            pInWindowAtPos += 4;
                         while (pInWindowAtPos < pInWindowMax && pInWindowAtPos[-nRepOffset] == pInWindowAtPos[0])
                            pInWindowAtPos++;
-                        const int nCurRepLen = (int)(pInWindowAtPos - pInWindowStart);
+                        const int nCurRepLen = (const int)(pInWindowAtPos - pInWindowStart);
 
                         if (nOverallMaxRepLen < nCurRepLen)
                            nOverallMaxRepLen = nCurRepLen;
