@@ -1038,7 +1038,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
 
                   if (nOriginalCombinedCommandSize >= nReducedCommandSize) {
                      /* Reduce */
-                     int nMatchLen = pMatch->length;
+                     const int nMatchLen = pMatch->length;
                      int j;
 
                      for (j = 0; j < nMatchLen; j++) {
@@ -1180,7 +1180,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
 
             if (nCurPartialSize >= nReducedPartialSize && !nCannotReduce) {
-               int nMatchLen = pMatch->length;
+               const int nMatchLen = pMatch->length;
 
                /* Join */
 
@@ -1251,7 +1251,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                      nReducedCommandSize += (pBestMatch[nNextIndex].length << 3);
 
                      if ((nCurCommandSize + nCurRepMatchSize) >= nReducedCommandSize) {
-                        int nMatchLen = pMatch->length;
+                        const int nMatchLen = pMatch->length;
                         int j;
 
                         for (j = 0; j < nMatchLen; j++) {
@@ -1341,8 +1341,8 @@ static int salvador_write_block(salvador_compressor* pCompressor, const salvador
       const salvador_final_match* pMatch = pBestMatch + i;
 
       if (pMatch->length >= 2 || (pMatch->length >= 1 && pMatch->offset == nRepMatchOffset && nNumLiterals != 0)) {
-         const int nMatchOffset = pMatch->offset;
          const int nMatchLen = pMatch->length;
+         const int nMatchOffset = pMatch->offset;
          const int nEncodedMatchLen = nMatchLen - 2;
 
          if (nMatchOffset < MIN_OFFSET || nMatchOffset > nMaxOffset || nMatchOffset > MAX_OFFSET)

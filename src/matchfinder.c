@@ -183,11 +183,10 @@ int salvador_build_suffix_array(salvador_compressor *pCompressor, const unsigned
  * @param pMatches pointer to returned matches
  * @param pMatchDepth pointer to returned match depths
  * @param nMaxMatches maximum number of matches to return (0 for none)
- * @param nBlockFlags bit 0: 1 for first block, 0 otherwise; bit 1: 1 for last block, 0 otherwise
  *
  * @return number of matches
  */
-static int salvador_find_matches_at(salvador_compressor *pCompressor, const int nOffset, salvador_match *pMatches, unsigned short *pMatchDepth, const int nMaxMatches, const int nBlockFlags) {
+static int salvador_find_matches_at(salvador_compressor *pCompressor, const int nOffset, salvador_match *pMatches, unsigned short *pMatchDepth, const int nMaxMatches) {
    unsigned long long *intervals = pCompressor->intervals;
    unsigned long long *pos_data = pCompressor->pos_data;
    unsigned long long ref;
@@ -376,7 +375,7 @@ void salvador_skip_matches(salvador_compressor *pCompressor, const int nStartOff
    /* Skipping still requires scanning for matches, as this also performs a lazy update of the intervals. However,
     * we don't store the matches. */
    for (i = nStartOffset; i < nEndOffset; i++) {
-      salvador_find_matches_at(pCompressor, i, &match, &depth, 0, 0);
+      salvador_find_matches_at(pCompressor, i, &match, &depth, 0);
    }
 }
 
@@ -395,7 +394,7 @@ void salvador_find_all_matches(salvador_compressor *pCompressor, const int nMatc
    int i;
 
    for (i = nStartOffset; i < nEndOffset; i++) {
-      int nMatches = salvador_find_matches_at(pCompressor, i, pMatch, pMatchDepth, nMatchesPerOffset, nBlockFlags);
+      int nMatches = salvador_find_matches_at(pCompressor, i, pMatch, pMatchDepth, nMatchesPerOffset);
 
       while (nMatches < nMatchesPerOffset) {
          pMatch[nMatches].length = 0;
