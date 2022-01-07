@@ -342,8 +342,8 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                if (nRepPos >= nMatchOffset) {
                   const unsigned char* pInWindowAtRepOffset = pInWindow + nRepPos;
 
-                  if (pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset]) {
-                     if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0 && nRepOffset) {
+                  if (nRepOffset && pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset]) {
+                     if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0) {
                         const int nLen0 = rle_len[nRepPos - nMatchOffset];
                         const int nLen1 = rle_len[nRepPos];
                         const int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
@@ -453,8 +453,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
          if (nCodingChoiceCost < pDestLiteralSlots[nArrivalsPerPosition - 1].cost ||
             (nCodingChoiceCost == pDestLiteralSlots[nArrivalsPerPosition - 1].cost && 
-               nRepOffset != pDestLiteralSlots[nArrivalsPerPosition - 1].rep_offset &&
-               nScore < pDestLiteralSlots[nArrivalsPerPosition - 1].score)) {
+               nScore < pDestLiteralSlots[nArrivalsPerPosition - 1].score &&
+               nRepOffset != pDestLiteralSlots[nArrivalsPerPosition - 1].rep_offset)) {
             int exists = 0, n;
 
             for (n = 0;
@@ -693,8 +693,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
                         if (nRepCodingChoiceCost < pDestSlots[nArrivalsPerPosition - 1].cost ||
                            (nRepCodingChoiceCost == pDestSlots[nArrivalsPerPosition - 1].cost &&
-                              nRepOffset != pDestSlots[nArrivalsPerPosition - 1].rep_offset &&
-                              nScore < pDestSlots[nArrivalsPerPosition - 1].score)) {
+                              nScore < pDestSlots[nArrivalsPerPosition - 1].score &&
+                              nRepOffset != pDestSlots[nArrivalsPerPosition - 1].rep_offset)) {
                            int exists = 0, n;
 
                            for (n = 0;
