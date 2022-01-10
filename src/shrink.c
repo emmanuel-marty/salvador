@@ -1561,27 +1561,34 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
       first_offset_for_byte[((unsigned int)pInWindow[nPosition]) | (((unsigned int)pInWindow[nPosition + 1]) << 8)] = nPosition;
    }
 
+   memset(offset_cache, 0xff, sizeof(int) * 2048);
+
    for (nPosition = nPreviousBlockSize + 1; nPosition < (nEndOffset - 1); nPosition++) {
       salvador_match *match = pCompressor->match + ((nPosition - nPreviousBlockSize) << MATCHES_PER_INDEX_SHIFT);
       unsigned short *match_depth = pCompressor->match_depth + ((nPosition - nPreviousBlockSize) << MATCHES_PER_INDEX_SHIFT);
       int m = 0, nInserted = 0;
       int nMatchPos;
 
-      while (m < 15 && match[m].length)
+      while (m < NMATCHES_PER_INDEX && match[m].length) {
+         offset_cache[match[m].offset & 2047] = nPosition;
+         offset_cache[(match[m].offset - (match_depth[m] & 0x3fff)) & 2047] = nPosition;
          m++;
+      }
 
       for (nMatchPos = next_offset_for_pos[nPosition - nPreviousBlockSize]; m < 15 && nMatchPos >= 0; nMatchPos = next_offset_for_pos[nMatchPos - nPreviousBlockSize]) {
-         int nMatchOffset = nPosition - nMatchPos;
+         const int nMatchOffset = nPosition - nMatchPos;
 
          if (nMatchOffset <= pCompressor->max_offset) {
             int nExistingMatchIdx;
             int nAlreadyExists = 0;
 
-            for (nExistingMatchIdx = 0; nExistingMatchIdx < m; nExistingMatchIdx++) {
-               if (match[nExistingMatchIdx].offset == nMatchOffset ||
-                  (match[nExistingMatchIdx].offset - (match_depth[nExistingMatchIdx] & 0x3fff)) == nMatchOffset) {
-                  nAlreadyExists = 1;
-                  break;
+            if (offset_cache[nMatchOffset & 2047] == nPosition) {
+               for (nExistingMatchIdx = 0; nExistingMatchIdx < m; nExistingMatchIdx++) {
+                  if (match[nExistingMatchIdx].offset == nMatchOffset ||
+                     (match[nExistingMatchIdx].offset - (match_depth[nExistingMatchIdx] & 0x3fff)) == nMatchOffset) {
+                     nAlreadyExists = 1;
+                     break;
+                  }
                }
             }
 
@@ -1624,8 +1631,6 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
    salvador_optimize_forward(pCompressor, pInWindow, nPreviousBlockSize, nEndOffset, 1 /* nInsertForwardReps */, nCurRepMatchOffset, NINITIAL_ARRIVALS_PER_POSITION, nBlockFlags);
 
    /* Supplement matches further */
-
-   memset(offset_cache, 0xff, sizeof(int) * 2048);
 
    for (nPosition = nPreviousBlockSize + 1; nPosition < (nEndOffset - 1); nPosition++) {
       salvador_match* match = pCompressor->match + ((nPosition - nPreviousBlockSize) << MATCHES_PER_INDEX_SHIFT);
