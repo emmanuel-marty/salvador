@@ -592,11 +592,10 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
                if (nMatchOffset != nRepOffset || cur_arrival[j].num_literals == 0) {
                   const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
-                  const int nScorePenalty = 3 + ((match[m].length & 0x8000) >> 15);
 
                   nNoRepmatchOffsetCost += nPrevCost /* the actual cost of the literals themselves accumulates up the chain */;
 
-                  nNoRepmatchScore = cur_arrival[j].score + nScorePenalty;
+                  nNoRepmatchScore = cur_arrival[j].score + 3;
                   nNonRepMatchArrivalIdx = j;
                   break;
                }
@@ -774,10 +773,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
       while (end_arrival->from_slot > 0 && end_arrival->from_pos >= 0 && (int)end_arrival->from_pos < nEndOffset) {
          pBestMatch[end_arrival->from_pos].length = end_arrival->match_len;
-         if (end_arrival->match_len)
-            pBestMatch[end_arrival->from_pos].offset = end_arrival->rep_offset;
-         else
-            pBestMatch[end_arrival->from_pos].offset = 0;
+         pBestMatch[end_arrival->from_pos].offset = (end_arrival->match_len) ? end_arrival->rep_offset : 0;
 
          end_arrival = &arrival[(end_arrival->from_pos * nMaxArrivalsPerPosition) + (end_arrival->from_slot - 1)];
       }
@@ -789,7 +785,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
  *
  * @param pCompressor compression context
  * @param pInWindow pointer to input data window (previously compressed bytes + bytes to compress)
- * @param pBestMatch optimal matches to evaluate and update
  * @param nStartOffset current offset in input window (typically the number of previously compressed bytes)
  * @param nEndOffset offset to end finding matches at (typically the size of the total input window in bytes
  * @param nCurRepMatchOffset starting rep offset for this block
@@ -797,7 +792,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
  *
  * @return non-zero if the number of tokens was reduced, 0 if it wasn't
  */
-static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsigned char *pInWindow, salvador_final_match *pBestMatch, const int nStartOffset, const int nEndOffset, const int *nCurRepMatchOffset, const int nBlockFlags) {
+static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int nStartOffset, const int nEndOffset, const int *nCurRepMatchOffset, const int nBlockFlags) {
+   salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int i;
    int nNumLiterals = (nBlockFlags & 1) ? 1 : 0;
    int nRepMatchOffset = *nCurRepMatchOffset;
@@ -1310,7 +1306,6 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
  * Emit a block of compressed data
  *
  * @param pCompressor compression context
- * @param pBestMatch optimal matches to emit
  * @param pInWindow pointer to input data window (previously compressed bytes + bytes to compress)
  * @param nStartOffset current offset in input window (typically the number of previously compressed bytes)
  * @param nEndOffset offset to end finding matches at (typically the size of the total input window in bytes
@@ -1325,7 +1320,8 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
  *
  * @return size of compressed data in output buffer, or -1 if the data is uncompressible
  */
-static int salvador_write_block(salvador_compressor* pCompressor, const salvador_final_match* pBestMatch, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
+static int salvador_write_block(salvador_compressor* pCompressor, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
+   const salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int nRepMatchOffset = *nCurRepMatchOffset;
    const int nMaxOffset = pCompressor->max_offset;
    const int nIsInverted = (pCompressor->flags & FLG_IS_INVERTED) ? 1 : 0;
@@ -1566,7 +1562,7 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
       int m = 0, nInserted = 0;
       int nMatchPos;
 
-      while (m < NMATCHES_PER_INDEX && match[m].length) {
+      while (m < 15 && match[m].length) {
          offset_cache[match[m].offset & 2047] = nPosition;
          offset_cache[(match[m].offset - (match_depth[m] & 0x3fff)) & 2047] = nPosition;
          m++;
@@ -1576,10 +1572,11 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
          const int nMatchOffset = nPosition - nMatchPos;
 
          if (nMatchOffset <= pCompressor->max_offset) {
-            int nExistingMatchIdx;
             int nAlreadyExists = 0;
 
             if (offset_cache[nMatchOffset & 2047] == nPosition) {
+               int nExistingMatchIdx;
+
                for (nExistingMatchIdx = 0; nExistingMatchIdx < m; nExistingMatchIdx++) {
                   if (match[nExistingMatchIdx].offset == nMatchOffset ||
                      (match[nExistingMatchIdx].offset - (match_depth[nExistingMatchIdx] & 0x3fff)) == nMatchOffset) {
@@ -1597,7 +1594,7 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
                   nMatchLen++;
                match[m].length = nMatchLen;
                match[m].offset = nMatchOffset;
-               match_depth[m] = 0x4000;
+               match_depth[m] = 0;
                m++;
                nInserted++;
                if (nInserted >= 15)
@@ -1713,13 +1710,13 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
    int nDidReduce;
    int nPasses = 0;
    do {
-      nDidReduce = salvador_reduce_commands(pCompressor, pInWindow, pCompressor->best_match - nPreviousBlockSize, nPreviousBlockSize, nEndOffset, nCurRepMatchOffset, nBlockFlags);
+      nDidReduce = salvador_reduce_commands(pCompressor, pInWindow, nPreviousBlockSize, nEndOffset, nCurRepMatchOffset, nBlockFlags);
       nPasses++;
    } while (nDidReduce && nPasses < 20);
 
    /* Write compressed block */
 
-   return salvador_write_block(pCompressor, pCompressor->best_match - nPreviousBlockSize, pInWindow, nPreviousBlockSize, nEndOffset, pOutData, nOutOffset, nMaxOutDataSize, nCurBitsOffset, nCurBitShift, nFinalLiterals, nCurRepMatchOffset, nBlockFlags);
+   return salvador_write_block(pCompressor, pInWindow, nPreviousBlockSize, nEndOffset, pOutData, nOutOffset, nMaxOutDataSize, nCurBitsOffset, nCurBitShift, nFinalLiterals, nCurRepMatchOffset, nBlockFlags);
 }
 
 /* Forward declaration */

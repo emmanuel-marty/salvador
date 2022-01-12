@@ -273,7 +273,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
                if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
                   if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                      nCurDepth++;
-                     *cur_depth = nCurDepth | 0x8000;
+                     *cur_depth = nCurDepth;
                   }
                   else {
                      nCurDepth = 0;
@@ -281,7 +281,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
                      cur_depth = depthptr;
                      matchptr->length = nMatchLen;
                      matchptr->offset = nMatchOffset;
-                     *depthptr = 0x8000;
+                     *depthptr = 0;
                      matchptr++;
                      depthptr++;
                   }
@@ -299,10 +299,10 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
       intervals[ref & POS_MASK] = nOffset | VISITED_FLAG;
       pos_data[match_pos] = (unsigned long long)ref;
 
-      int nMatchOffset = (int)(nOffset - match_pos);
-      int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
-
       if ((matchptr - pMatches) < nMaxMatches) {
+         int nMatchOffset = (int)(nOffset - match_pos);
+         int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
+
          if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
             if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                nCurDepth++;
@@ -337,7 +337,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
             if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
                if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                   nCurDepth++;
-                  *cur_depth = nCurDepth | 0x8000;
+                  *cur_depth = nCurDepth;
                }
                else {
                   nCurDepth = 0;
@@ -345,7 +345,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
                   cur_depth = depthptr;
                   matchptr->length = nMatchLen;
                   matchptr->offset = nMatchOffset;
-                  *depthptr = 0x8000;
+                  *depthptr = 0;
                   matchptr++;
                   depthptr++;
                }
