@@ -584,37 +584,34 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                salvador_insert_forward_match(pCompressor, pInWindow, i, nMatchOffset, nStartOffset, nEndOffset, 0);
             }
 
-            int nNoRepmatchOffsetCost = OFFSET_COST(nMatchOffset);
-            int nNoRepmatchScore, nStartingMatchLen, k;
+            int nStartingMatchLen, k;
 
             int nNonRepMatchArrivalIdx = -1;
             for (j = 0; j < nNumArrivalsForThisPos; j++) {
                const int nRepOffset = cur_arrival[j].rep_offset;
 
                if (nMatchOffset != nRepOffset || cur_arrival[j].num_literals == 0) {
-                  const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
-
-                  nNoRepmatchOffsetCost += nPrevCost /* the actual cost of the literals themselves accumulates up the chain */;
-
-                  nNoRepmatchScore = cur_arrival[j].score + 3;
                   nNonRepMatchArrivalIdx = j;
                   break;
                }
             }
 
-            if (nMatchLen >= LEAVE_ALONE_MATCH_SIZE) {
-               nStartingMatchLen = nMatchLen;
-            }
-            else {
-               nStartingMatchLen = 1;
-            }
-
-            for (k = nStartingMatchLen; k <= nMatchLen; k++) {
-               salvador_arrival* pDestSlots = &cur_arrival[k * nMaxArrivalsPerPosition];
+            if (nNonRepMatchArrivalIdx >= 0) {
+               const int nPrevCost = cur_arrival[nNonRepMatchArrivalIdx].cost & 0x3fffffff;
+               const int nNoRepmatchOffsetCost = nPrevCost /* the actual cost of the literals themselves accumulates up the chain */ + OFFSET_COST(nMatchOffset);
+               const int nNoRepmatchScore = cur_arrival[nNonRepMatchArrivalIdx].score + 3;
 
                /* Insert non-repmatch candidate */
 
-               if (k >= 2 && nNonRepMatchArrivalIdx >= 0) {
+               if (nMatchLen >= LEAVE_ALONE_MATCH_SIZE) {
+                  nStartingMatchLen = nMatchLen;
+               }
+               else {
+                  nStartingMatchLen = 2;
+               }
+
+               for (k = nStartingMatchLen; k <= nMatchLen; k++) {
+                  salvador_arrival* pDestSlots = &cur_arrival[k * nMaxArrivalsPerPosition];
                   const int nMatchLenCost = (k < 8192) ? salvador_cost_for_len[k - 1] : (salvador_get_match_varlen_size_norep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
                   const int nCodingChoiceCost = nMatchLenCost + nNoRepmatchOffsetCost;
 
@@ -677,8 +674,19 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                      }
                   }
                }
+            }
 
-               /* Insert repmatch candidates */
+            /* Insert repmatch candidates */
+
+            if (nMatchLen >= LEAVE_ALONE_MATCH_SIZE) {
+               nStartingMatchLen = nMatchLen;
+            }
+            else {
+               nStartingMatchLen = 1;
+            }
+
+            for (k = nStartingMatchLen; k <= (nOverallMaxRepLen < nMatchLen ? nOverallMaxRepLen : nMatchLen); k++) {
+               salvador_arrival* pDestSlots = &cur_arrival[k * nMaxArrivalsPerPosition];
 
                if (k > nOverallMinRepLen && k <= nOverallMaxRepLen) {
                   const int nMatchLenCost = (k < 8192) ? salvador_cost_for_len[k] : (salvador_get_match_varlen_size_rep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
