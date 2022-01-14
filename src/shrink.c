@@ -863,6 +863,8 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   if (i >= nRepMatchOffset &&
                      (i - nRepMatchOffset + pMatch->length) <= nEndOffset) {
                      int nMaxLen = 0;
+                     while ((nMaxLen + 8) < pMatch->length && !memcmp(pInWindow + i - nRepMatchOffset + nMaxLen, pInWindow + i - pMatch->offset + nMaxLen, 8))
+                        nMaxLen += 8;
                      while ((nMaxLen + 4) < pMatch->length && !memcmp(pInWindow + i - nRepMatchOffset + nMaxLen, pInWindow + i - pMatch->offset + nMaxLen, 4))
                         nMaxLen += 4;
                      while (nMaxLen < pMatch->length && pInWindow[i - nRepMatchOffset + nMaxLen] == pInWindow[i - pMatch->offset + nMaxLen])
@@ -916,6 +918,8 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   /* Otherwise, try to gain a match forward as well */
                   if (i >= pBestMatch[nNextIndex].offset && (i - pBestMatch[nNextIndex].offset + pMatch->length) <= nEndOffset && pMatch->offset != nRepMatchOffset) {
                      int nMaxLen = 0;
+                     while ((nMaxLen + 8) < pMatch->length && !memcmp(pInWindow + i - pBestMatch[nNextIndex].offset + nMaxLen, pInWindow + i - pMatch->offset + nMaxLen, 8))
+                        nMaxLen += 8;
                      while ((nMaxLen + 4) < pMatch->length && !memcmp(pInWindow + i - pBestMatch[nNextIndex].offset + nMaxLen, pInWindow + i - pMatch->offset + nMaxLen, 4))
                         nMaxLen += 4;
                      while (nMaxLen < pMatch->length && pInWindow[i - pBestMatch[nNextIndex].offset + nMaxLen] == pInWindow[i - pMatch->offset + nMaxLen])
@@ -1594,6 +1598,8 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
 
             if (!nAlreadyExists) {
                int nMatchLen = 2;
+               while (nMatchLen < 128 && (nPosition + nMatchLen + 8) < nEndOffset && !memcmp(pInWindow + nMatchPos + nMatchLen, pInWindow + nPosition + nMatchLen, 8))
+                  nMatchLen += 8;
                while (nMatchLen < 128 && (nPosition + nMatchLen + 4) < nEndOffset && !memcmp(pInWindow + nMatchPos + nMatchLen, pInWindow + nPosition + nMatchLen, 4))
                   nMatchLen += 4;
                while (nMatchLen < 128 && (nPosition + nMatchLen) < nEndOffset && pInWindow[nMatchPos + nMatchLen] == pInWindow[nPosition + nMatchLen])
@@ -1684,6 +1690,8 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
 
                      if (nGotMatch) {
                         int nMatchLen = 2;
+                        while (nMatchLen < 128 && (nPosition + nMatchLen + 8) < nEndOffset && !memcmp(pInWindow + nMatchPos + nMatchLen, pInWindow + nPosition + nMatchLen, 8))
+                           nMatchLen += 8;
                         while (nMatchLen < 128 && (nPosition + nMatchLen + 4) < nEndOffset && !memcmp(pInWindow + nMatchPos + nMatchLen, pInWindow + nPosition + nMatchLen, 4))
                            nMatchLen += 4;
                         while (nMatchLen < 128 && (nPosition + nMatchLen) < nEndOffset && pInWindow[nMatchPos + nMatchLen] == pInWindow[nPosition + nMatchLen])
