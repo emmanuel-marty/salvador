@@ -84,24 +84,29 @@ static const char salvador_cost_for_len[8192] = {
  * @return number of bits required for encoding
  */
 static int salvador_get_elias_size(const int nValue) {
-   int i = nValue;
-   int nBits = 0;
-
-   i |= (i >> 1);
-   i |= (i >> 2);
-   i |= (i >> 4);
-   i |= (i >> 8);
-   i |= (i >> 16);
-   i = (i - (i >> 1));
-
-   while ((i >>= 1) > 0) {
-      nBits++;
-      nBits++;
+   if (nValue >= 0 && nValue < 8192) {
+      return salvador_cost_for_len[nValue] - TOKEN_SIZE;
    }
+   else {
+      int i = nValue;
+      int nBits = 0;
 
-   nBits++;
+      i |= (i >> 1);
+      i |= (i >> 2);
+      i |= (i >> 4);
+      i |= (i >> 8);
+      i |= (i >> 16);
+      i = (i - (i >> 1));
 
-   return nBits;
+      while ((i >>= 1) > 0) {
+         nBits++;
+         nBits++;
+      }
+
+      nBits++;
+
+      return nBits;
+   }
 }
 
 /**
@@ -209,7 +214,7 @@ static int salvador_write_normal_elias_value(unsigned char* pOutData, int nOutOf
 }
 
 /**
- * Write possibly inverted, interlaced elias gamma value to output (compressed) buffer
+ * Write inverted, interlaced elias gamma value to output (compressed) buffer
  *
  * @param pOutData pointer to output buffer
  * @param nOutOffset current write index into output buffer
@@ -378,12 +383,11 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                                     fwd_match[r].length = nCurRepLen;
                                     fwd_depth[r] = 0;
                                  }
-                                 r = NMATCHES_PER_INDEX;
                                  break;
                               }
                            }
 
-                           if (r < NMATCHES_PER_INDEX) {
+                           if (!fwd_match[r].length) {
                               fwd_match[r].offset = nMatchOffset;
                               fwd_match[r].length = nCurRepLen;
                               fwd_depth[r] = 0;
@@ -678,8 +682,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
             /* Insert repmatch candidates */
 
-            if (nMatchLen >= LEAVE_ALONE_MATCH_SIZE) {
-               nStartingMatchLen = (nMatchLen > nOverallMinRepLen) ? nMatchLen : (nOverallMinRepLen + 1);
+            if (nMatchLen >= LEAVE_ALONE_MATCH_SIZE && nMatchLen > nOverallMinRepLen) {
+               nStartingMatchLen = nMatchLen;
             }
             else {
                nStartingMatchLen = nOverallMinRepLen + 1;
@@ -819,14 +823,14 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
          !memcmp(pInWindow + i - (pBestMatch[i + 1].offset), pInWindow + i, pBestMatch[i + 1].length + 1)) {
          int nCurLenSize, nReducedLenSize;
 
-         if (nRepMatchOffset && pBestMatch[i + 1].offset == nRepMatchOffset) {
+         if (pBestMatch[i + 1].offset == nRepMatchOffset && nRepMatchOffset) {
             nCurLenSize = salvador_get_match_varlen_size_rep(pBestMatch[i + 1].length - MIN_ENCODED_MATCH_SIZE);
          }
          else {
             nCurLenSize = salvador_get_match_varlen_size_norep(pBestMatch[i + 1].length - MIN_ENCODED_MATCH_SIZE);
          }
 
-         if (nRepMatchOffset && nNumLiterals != 0 && pBestMatch[i + 1].offset == nRepMatchOffset) {
+         if (nNumLiterals != 0 && pBestMatch[i + 1].offset == nRepMatchOffset && nRepMatchOffset) {
             nReducedLenSize = salvador_get_match_varlen_size_rep(pBestMatch[i + 1].length + 1 - MIN_ENCODED_MATCH_SIZE);
          }
          else {
@@ -1011,7 +1015,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                      nNextCommandSize += salvador_get_match_varlen_size_norep(pBestMatch[nNextIndex].length - MIN_ENCODED_MATCH_SIZE);
                   }
 
-                  int nOriginalCombinedCommandSize = nCurCommandSize + nNextCommandSize;
+                  const int nOriginalCombinedCommandSize = nCurCommandSize + nNextCommandSize;
 
                   /* Calculate the cost of replacing this match command by literals + the next command with the cost of encoding these literals */
                   int nReducedCommandSize = (pMatch->length << 3);
@@ -1289,7 +1293,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                nCurPartialSize += TOKEN_SIZE + salvador_get_match_varlen_size_rep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
                nCurPartialSize += salvador_get_literals_varlen_size(nNextLiterals);
 
-               int nReducedPartialSize = salvador_get_literals_varlen_size(nNumLiterals + 1 + nNextLiterals) + 8;
+               const int nReducedPartialSize = salvador_get_literals_varlen_size(nNumLiterals + 1 + nNextLiterals) + 8;
 
                if (nCurPartialSize >= nReducedPartialSize) {
                   pMatch->length = 0;
