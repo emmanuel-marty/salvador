@@ -400,11 +400,9 @@ void salvador_find_all_matches(salvador_compressor *pCompressor, const int nMatc
    for (i = nStartOffset; i < nEndOffset; i++) {
       int nMatches = salvador_find_matches_at(pCompressor, i, pMatch, pMatchDepth, nMatchesPerOffset);
 
-      while (nMatches < nMatchesPerOffset) {
-         pMatch[nMatches].length = 0;
-         pMatch[nMatches].offset = 0;
-         pMatchDepth[nMatches] = 0;
-         nMatches++;
+      if (nMatches < nMatchesPerOffset) {
+         memset(pMatch + nMatches, 0, (nMatchesPerOffset - nMatches) * sizeof(salvador_match));
+         memset(pMatchDepth + nMatches, 0, (nMatchesPerOffset - nMatches) * sizeof(unsigned short));
       }
 
       pMatch += nMatchesPerOffset;
