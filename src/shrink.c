@@ -435,6 +435,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
          arrival[i + j].cost = 0x40000000;
    }
 
+   arrival[nStartOffset * nMaxArrivalsPerPosition].cost = 0;
    arrival[nStartOffset * nMaxArrivalsPerPosition].from_slot = -1;
    arrival[nStartOffset * nMaxArrivalsPerPosition].rep_offset = *nCurRepMatchOffset;
 
@@ -448,8 +449,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       int j, m;
       
       for (j = 0; j < nArrivalsPerPosition && cur_arrival[j].from_slot; j++) {
-         const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
-         int nCodingChoiceCost = nPrevCost + 8 /* literal */;
+         int nCodingChoiceCost = cur_arrival[j].cost + 8 /* literal */;
          const int nScore = cur_arrival[j].score + 1;
          const int nNumLiterals = cur_arrival[j].num_literals + 1;
          const int nRepOffset = cur_arrival[j].rep_offset;
@@ -601,8 +601,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
             int nStartingMatchLen, k;
 
             if (nNonRepMatchArrivalIdx >= 0) {
-               const int nPrevCost = cur_arrival[nNonRepMatchArrivalIdx].cost & 0x3fffffff;
-               const int nNoRepmatchOffsetCost = nPrevCost /* the actual cost of the literals themselves accumulates up the chain */ + OFFSET_COST(nMatchOffset);
+               const int nNoRepmatchOffsetCost = cur_arrival[nNonRepMatchArrivalIdx].cost /* the actual cost of the literals themselves accumulates up the chain */ + OFFSET_COST(nMatchOffset);
                const int nNoRepmatchScore = cur_arrival[nNonRepMatchArrivalIdx].score + 3;
 
                /* Insert non-repmatch candidate */
@@ -690,14 +689,13 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
             }
 
             for (k = nStartingMatchLen; k <= (nOverallMaxRepLen < nMatchLen ? nOverallMaxRepLen : nMatchLen); k++) {
-               salvador_arrival* pDestSlots = &cur_arrival[k * nMaxArrivalsPerPosition];
                const int nMatchLenCost = (k < 8192) ? salvador_cost_for_len[k] : (salvador_get_match_varlen_size_rep(k - MIN_ENCODED_MATCH_SIZE) + TOKEN_SIZE /* token */);
+               salvador_arrival* pDestSlots = &cur_arrival[k * nMaxArrivalsPerPosition];
                int nCurRepMatchArrival;
 
                for (nCurRepMatchArrival = 0; (j = nRepMatchArrivalIdx[nCurRepMatchArrival]) >= 0; nCurRepMatchArrival += 2) {
                   if (nRepMatchArrivalIdx[nCurRepMatchArrival + 1] >= k) {
-                     const int nPrevCost = cur_arrival[j].cost & 0x3fffffff;
-                     const int nRepCodingChoiceCost = nPrevCost /* the actual cost of the literals themselves accumulates up the chain */ + nMatchLenCost;
+                     const int nRepCodingChoiceCost = cur_arrival[j].cost /* the actual cost of the literals themselves accumulates up the chain */ + nMatchLenCost;
                      const int nScore = cur_arrival[j].score + 2;
                      const int nRepOffset = cur_arrival[j].rep_offset;
 
