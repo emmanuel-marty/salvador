@@ -449,13 +449,10 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       int j, m;
       
       for (j = 0; j < nArrivalsPerPosition && cur_arrival[j].from_slot; j++) {
-         int nCodingChoiceCost = cur_arrival[j].cost + 8 /* literal */;
-         const int nScore = cur_arrival[j].score + 1;
          const int nNumLiterals = cur_arrival[j].num_literals + 1;
+         const int nCodingChoiceCost = cur_arrival[j].cost + 8 /* literal */ + (((nNumLiterals & (nNumLiterals - 1)) == 0) ? 2 : 0);
+         const int nScore = cur_arrival[j].score + 1;
          const int nRepOffset = cur_arrival[j].rep_offset;
-
-         if ((nNumLiterals & (nNumLiterals - 1)) == 0)
-            nCodingChoiceCost += 2;
 
          if (nCodingChoiceCost < pDestLiteralSlots[nArrivalsPerPosition - 1].cost ||
             (nCodingChoiceCost == pDestLiteralSlots[nArrivalsPerPosition - 1].cost && 
