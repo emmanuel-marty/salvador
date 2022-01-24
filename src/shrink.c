@@ -800,11 +800,11 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int nStartOffset, const int nEndOffset, const int *nCurRepMatchOffset, const int nBlockFlags) {
    salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int i;
-   int nNumLiterals = (nBlockFlags & 1) ? 1 : 0;
+   int nNumLiterals = nBlockFlags & 1;
    int nRepMatchOffset = *nCurRepMatchOffset;
    int nDidReduce = 0;
 
-   for (i = nStartOffset + ((nBlockFlags & 1) ? 1 : 0); i < nEndOffset; ) {
+   for (i = nStartOffset + (nBlockFlags & 1); i < nEndOffset; ) {
       salvador_final_match *pMatch = pBestMatch + i;
 
       if (pMatch->length == 0 &&
@@ -1333,10 +1333,10 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
    const salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int nRepMatchOffset = *nCurRepMatchOffset;
    const int nMaxOffset = pCompressor->max_offset;
-   const int nIsInverted = (pCompressor->flags & FLG_IS_INVERTED) ? 1 : 0;
+   const int nIsInverted = pCompressor->flags & FLG_IS_INVERTED;
    int nNumLiterals = 0;
    int nInFirstLiteralOffset = 0;
-   int nIsFirstCommand = (nBlockFlags & 1) ? 1 : 0;
+   int nIsFirstCommand = nBlockFlags & 1;
    int i;
 
    for (i = nStartOffset; i < nEndOffset; ) {

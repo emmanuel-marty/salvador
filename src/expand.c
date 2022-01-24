@@ -108,7 +108,7 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
    unsigned char bits = 0;
    int nMatchOffset = 1;
    int nIsFirstCommand = 1;
-   const int nIsInverted = (nFlags & FLG_IS_INVERTED) ? 1 : 0;
+   const int nIsInverted = nFlags & FLG_IS_INVERTED;
    int nDecompressedSize = 0;
 
    if (pInputData >= pInputDataEnd)
@@ -209,7 +209,7 @@ size_t salvador_decompress(const unsigned char *pInputData, unsigned char *pOutD
    unsigned char bits = 0;
    int nMatchOffset = 1;
    int nIsFirstCommand = 1;
-   const int nIsInverted = (nFlags & FLG_IS_INVERTED) ? 1 : 0;
+   const int nIsInverted = nFlags & FLG_IS_INVERTED;
 
    if (pInputData >= pInputDataEnd && pCurOutData < pOutDataEnd)
       return -1;
