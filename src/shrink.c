@@ -1460,7 +1460,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
 
          i += nMatchLen;
 
-         int nCurSafeDist = (i - nStartOffset) - nOutOffset;
+         const int nCurSafeDist = (i - nStartOffset) - nOutOffset;
          if (nCurSafeDist >= 0 && pCompressor->stats.safe_dist < nCurSafeDist)
             pCompressor->stats.safe_dist = nCurSafeDist;
 
@@ -1491,10 +1491,6 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
             nOutOffset = salvador_write_data_bit(pOutData, nOutOffset, nMaxOutDataSize, 0 /* literals follow */, nCurBitsOffset, nCurBitShift);
             if (nOutOffset < 0) return -1;
          }
-         else {
-            /* The command code for the first literals is omitted. We are writing the final literals, so this must be a fully incompressible block */
-            nIsFirstCommand = 0;
-         }
 
          nOutOffset = salvador_write_normal_elias_value(pOutData, nOutOffset, nMaxOutDataSize, nNumLiterals, nCurBitsOffset, nCurBitShift);
          if (nOutOffset < 0) return -1;
@@ -1503,7 +1499,6 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
             return -1;
          memcpy(pOutData + nOutOffset, pInWindow + nInFirstLiteralOffset, nNumLiterals);
          nOutOffset += nNumLiterals;
-         nNumLiterals = 0;
       }
 
       nOutOffset = salvador_write_data_bit(pOutData, nOutOffset, nMaxOutDataSize, 1 /* match with offset */, nCurBitsOffset, nCurBitShift);
@@ -1944,12 +1939,6 @@ size_t salvador_compress(const unsigned char *pInputData, unsigned char *pOutBuf
    int nError = 0;
    const int nBlockSize = (nInputSize < BLOCK_SIZE) ? ((nInputSize < 1024) ? 1024 : (int)nInputSize) : BLOCK_SIZE;
    const int nMaxOutBlockSize = (int)salvador_get_max_compressed_size(nBlockSize);
-
-   if (nDictionarySize < nInputSize) {
-      int nInDataSize = (int)(nInputSize - nDictionarySize);
-      if (nInDataSize > nBlockSize)
-         nInDataSize = nBlockSize;
-   }
 
    nResult = salvador_compressor_init(&compressor, nBlockSize, nBlockSize * 2, nMaxOffset, nMaxArrivals, nFlags);
    if (nResult != 0) {
