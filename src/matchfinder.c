@@ -241,20 +241,13 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
          if (nMatchOffset <= nMaxOffset) {
             int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
-            if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
-               nCurDepth++;
-               *cur_depth = nCurDepth;
-            }
-            else {
-               nCurDepth = 0;
+            matchptr->length = nMatchLen;
+            matchptr->offset = nMatchOffset;
+            matchptr++;
 
-               cur_depth = depthptr;
-               matchptr->length = nMatchLen;
-               matchptr->offset = nMatchOffset;
-               *depthptr = 0;
-               matchptr++;
-               depthptr++;
-            }
+            nCurDepth = 0;
+            cur_depth = depthptr;
+            *depthptr++ = 0;
 
             nPrevLen = nMatchLen;
             nPrevOffset = nMatchOffset;
@@ -274,18 +267,16 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
                   int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
                   if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
-                     nCurDepth++;
-                     *cur_depth = nCurDepth;
+                     *cur_depth = ++nCurDepth;
                   }
                   else {
-                     nCurDepth = 0;
-
-                     cur_depth = depthptr;
                      matchptr->length = nMatchLen;
                      matchptr->offset = nMatchOffset;
-                     *depthptr = 0;
                      matchptr++;
-                     depthptr++;
+
+                     nCurDepth = 0;
+                     cur_depth = depthptr;
+                     *depthptr++ = 0;
                   }
 
                   nPrevLen = nMatchLen;
@@ -308,18 +299,16 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
             int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
             if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
-               nCurDepth++;
-               *cur_depth = nCurDepth;
+               *cur_depth = ++nCurDepth;
             }
             else {
-               nCurDepth = 0;
-
-               cur_depth = depthptr;
                matchptr->length = nMatchLen;
                matchptr->offset = nMatchOffset;
-               *depthptr = 0;
                matchptr++;
-               depthptr++;
+
+               nCurDepth = 0;
+               cur_depth = depthptr;
+               *depthptr++ = 0;
             }
 
             nPrevLen = nMatchLen;
@@ -340,18 +329,16 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
                int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
                if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
-                  nCurDepth++;
-                  *cur_depth = nCurDepth;
+                  *cur_depth = ++nCurDepth;
                }
                else {
-                  nCurDepth = 0;
-
-                  cur_depth = depthptr;
                   matchptr->length = nMatchLen;
                   matchptr->offset = nMatchOffset;
-                  *depthptr = 0;
                   matchptr++;
-                  depthptr++;
+
+                  nCurDepth = 0;
+                  cur_depth = depthptr;
+                  *depthptr++ = 0;
                }
 
                nPrevLen = nMatchLen;
