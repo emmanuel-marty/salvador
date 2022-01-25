@@ -11,6 +11,8 @@ salvador is written in portable C. It is fully open-source under a liberal licen
 
 The output is fully compatible with the [ZX0](https://github.com/einar-saukas/ZX0) compressor by Einar Saukas.
 
+Check out [Dali](https://csdb.dk/release/?id=213694&show=summary) by Bitbreaker, that uses Salvador to compress for the C64, including self, in-place decompression and proper handling of load-addresses. The tool is part of the [Bitfire](https://github.com/bboxy/bitfire) C64 loading system.
+
 Included 8-bit decompression code:
 
  * [8088](https://github.com/emmanuel-marty/salvador/tree/main/asm/8088) by Emmanuel Marty. 
