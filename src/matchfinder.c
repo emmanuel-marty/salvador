@@ -194,6 +194,9 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
    unsigned long long match_pos;
    salvador_match *matchptr;
    unsigned short *depthptr;
+   int nPrevOffset, nPrevLen, nCurDepth;
+   unsigned short* cur_depth;
+   int nMatchOffset, nMatchLen;
    const int nMaxOffset = pCompressor->max_offset;
 
    /**
@@ -226,32 +229,31 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
    }
 
    /* Ascend indirectly via pos_data[] links.  */
+   
    match_pos = super_ref & EXCL_VISITED_MASK;
    matchptr = pMatches;
    depthptr = pMatchDepth;
-   int nPrevOffset = 0;
-   int nPrevLen = 0;
-   int nCurDepth = 0;
-   unsigned short *cur_depth = NULL;
+
+   nPrevOffset = 0;
+   nPrevLen = 0;
+   nCurDepth = 0;
+   cur_depth = NULL;
    
-   if (nOffset >= match_pos) {
-      int nMatchOffset = (int)(nOffset - match_pos);
+   if ((matchptr - pMatches) < nMaxMatches) {
+      nMatchOffset = (int)(nOffset - match_pos);
 
-      if ((matchptr - pMatches) < nMaxMatches) {
-         if (nMatchOffset <= nMaxOffset) {
-            int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
+      if (nMatchOffset <= nMaxOffset) {
+         nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
-            matchptr->length = nMatchLen;
-            matchptr->offset = nMatchOffset;
-            matchptr++;
+         matchptr->length = nMatchLen;
+         matchptr->offset = nMatchOffset;
+         matchptr++;
+         
+         *depthptr = nCurDepth = 0;
+         cur_depth = depthptr++;
 
-            nCurDepth = 0;
-            cur_depth = depthptr;
-            *depthptr++ = 0;
-
-            nPrevLen = nMatchLen;
-            nPrevOffset = nMatchOffset;
-         }
+         nPrevLen = nMatchLen;
+         nPrevOffset = nMatchOffset;
       }
    }
 
@@ -259,29 +261,26 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
       if ((super_ref = pos_data[match_pos]) > ref) {
          match_pos = intervals[super_ref & POS_MASK] & EXCL_VISITED_MASK;
 
-         if (nOffset >= match_pos) {
-            int nMatchOffset = (int)(nOffset - match_pos);
+         if ((matchptr - pMatches) < nMaxMatches) {
+            nMatchOffset = (int)(nOffset - match_pos);
 
-            if ((matchptr - pMatches) < nMaxMatches) {
-               if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
-                  int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
+            if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
+               nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
-                  if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
-                     *cur_depth = ++nCurDepth;
-                  }
-                  else {
-                     matchptr->length = nMatchLen;
-                     matchptr->offset = nMatchOffset;
-                     matchptr++;
-
-                     nCurDepth = 0;
-                     cur_depth = depthptr;
-                     *depthptr++ = 0;
-                  }
-
-                  nPrevLen = nMatchLen;
-                  nPrevOffset = nMatchOffset;
+               if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
+                  *cur_depth = ++nCurDepth;
                }
+               else {
+                  matchptr->length = nMatchLen;
+                  matchptr->offset = nMatchOffset;
+                  matchptr++;
+                  
+                  *depthptr = nCurDepth = 0;
+                  cur_depth = depthptr++;
+               }
+
+               nPrevLen = nMatchLen;
+               nPrevOffset = nMatchOffset;
             }
          }
       }
@@ -293,10 +292,10 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
       pos_data[match_pos] = (unsigned long long)ref;
 
       if ((matchptr - pMatches) < nMaxMatches) {
-         int nMatchOffset = (int)(nOffset - match_pos);
+         nMatchOffset = (int)(nOffset - match_pos);
 
          if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
-            int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
+            nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
             if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                *cur_depth = ++nCurDepth;
@@ -305,10 +304,9 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
                matchptr->length = nMatchLen;
                matchptr->offset = nMatchOffset;
                matchptr++;
-
-               nCurDepth = 0;
-               cur_depth = depthptr;
-               *depthptr++ = 0;
+               
+               *depthptr = nCurDepth = 0;
+               cur_depth = depthptr++;
             }
 
             nPrevLen = nMatchLen;
@@ -321,29 +319,26 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
       ref = super_ref;
       match_pos = intervals[ref & POS_MASK] & EXCL_VISITED_MASK;
 
-      if (nOffset >= match_pos) {
-         int nMatchOffset = (int)(nOffset - match_pos);
+      if ((matchptr - pMatches) < nMaxMatches) {
+         nMatchOffset = (int)(nOffset - match_pos);
 
-         if ((matchptr - pMatches) < nMaxMatches) {
-            if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
-               int nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
+         if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
+            nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
-               if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
-                  *cur_depth = ++nCurDepth;
-               }
-               else {
-                  matchptr->length = nMatchLen;
-                  matchptr->offset = nMatchOffset;
-                  matchptr++;
-
-                  nCurDepth = 0;
-                  cur_depth = depthptr;
-                  *depthptr++ = 0;
-               }
-
-               nPrevLen = nMatchLen;
-               nPrevOffset = nMatchOffset;
+            if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
+               *cur_depth = ++nCurDepth;
             }
+            else {
+               matchptr->length = nMatchLen;
+               matchptr->offset = nMatchOffset;
+               matchptr++;
+               
+               *depthptr = nCurDepth = 0;
+               cur_depth = depthptr++;
+            }
+
+            nPrevLen = nMatchLen;
+            nPrevOffset = nMatchOffset;
          }
       }
    }
