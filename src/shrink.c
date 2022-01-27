@@ -570,17 +570,17 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       nRepMatchArrivalIdx[nNumRepMatchArrivals] = -1;
 
       for (m = 0; m < NMATCHES_PER_INDEX && match[m].length; m++) {
-         const int nOrigMatchLen = match[m].length;
+         int nOrigMatchLen = match[m].length;
          const int nOrigMatchOffset = match[m].offset;
          const unsigned int nOrigMatchDepth = match_depth[m];
          unsigned int d;
 
-         for (d = 0; d <= nOrigMatchDepth; d += (nOrigMatchDepth ? nOrigMatchDepth : 1)) {
-            const int nMatchOffset = nOrigMatchOffset - d;
-            int nMatchLen = nOrigMatchLen - d;
+         if ((i + nOrigMatchLen) > nEndOffset)
+            nOrigMatchLen = nEndOffset - i;
 
-            if ((i + nMatchLen) > nEndOffset)
-               nMatchLen = nEndOffset - i;
+         for (d = 0; d <= nOrigMatchDepth; d += (nOrigMatchDepth ? nOrigMatchDepth : 1)) {
+            const int nMatchLen = nOrigMatchLen - d;
+            const int nMatchOffset = nOrigMatchOffset - d;
 
             if (nInsertForwardReps) {
                salvador_insert_forward_match(pCompressor, pInWindow, i, nMatchOffset, nStartOffset, nEndOffset, 0);
