@@ -345,10 +345,12 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                visited[nRepPos] = nMatchOffset;
 
                if (nRepPos >= nMatchOffset) {
-                  const unsigned char* pInWindowAtRepOffset = pInWindow + nRepPos;
+                  const unsigned char* pInWindowStart = pInWindow + nRepPos;
 
-                  if (pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset]) {
-                     if (pCompressor->match[((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT) + NMATCHES_PER_INDEX - 1].length == 0) {
+                  if (pInWindowStart[0] == pInWindowStart[-nMatchOffset]) {
+                     salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
+
+                     if (fwd_match[NMATCHES_PER_INDEX - 1].length == 0) {
                         if (nRepOffset) {
                            const int nLen0 = rle_len[nRepPos - nMatchOffset];
                            const int nLen1 = rle_len[nRepPos];
@@ -358,8 +360,8 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                            if (nMaxRepLen > LCP_MAX)
                               nMaxRepLen = LCP_MAX;
 
-                           const unsigned char* pInWindowMax = pInWindowAtRepOffset + nMaxRepLen;
-                           pInWindowAtRepOffset += nMinLen;
+                           const unsigned char* pInWindowMax = pInWindowStart + nMaxRepLen;
+                           const unsigned char* pInWindowAtRepOffset = pInWindowStart + nMinLen;
 
                            if (pInWindowAtRepOffset > pInWindowMax)
                               pInWindowAtRepOffset = pInWindowMax;
@@ -371,9 +373,8 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                            while (pInWindowAtRepOffset < pInWindowMax && pInWindowAtRepOffset[0] == pInWindowAtRepOffset[-nMatchOffset])
                               pInWindowAtRepOffset++;
 
-                           const int nCurRepLen = (const int)(pInWindowAtRepOffset - (pInWindow + nRepPos));
+                           const int nCurRepLen = (const int)(pInWindowAtRepOffset - pInWindowStart);
 
-                           salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
                            unsigned short* fwd_depth = pCompressor->match_depth + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
                            int r;
 
@@ -537,7 +538,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                const int nRepOffset = cur_arrival[j].rep_offset;
 
                if (i >= nRepOffset) {
-                  if (pInWindow[i] == pInWindow[i - nRepOffset]) {
+                  if (pInWindowStart[0] == pInWindowStart[-nRepOffset]) {
                      if (nRepOffset) {
                         const int nLen0 = rle_len[i - nRepOffset];
                         const int nLen1 = rle_len[i];
