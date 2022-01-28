@@ -345,12 +345,12 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                visited[nRepPos] = nMatchOffset;
 
                if (nRepPos >= nMatchOffset) {
-                  const unsigned char* pInWindowStart = pInWindow + nRepPos;
+                  salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
 
-                  if (pInWindowStart[0] == pInWindowStart[-nMatchOffset]) {
-                     salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
+                  if (fwd_match[NMATCHES_PER_INDEX - 1].length == 0) {
+                     const unsigned char* pInWindowStart = pInWindow + nRepPos;
 
-                     if (fwd_match[NMATCHES_PER_INDEX - 1].length == 0) {
+                     if (pInWindowStart[0] == pInWindowStart[-nMatchOffset]) {
                         if (nRepOffset) {
                            const int nLen0 = rle_len[nRepPos - nMatchOffset];
                            const int nLen1 = rle_len[nRepPos];
