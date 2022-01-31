@@ -993,15 +993,13 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                      nCurCommandSize += (nNumLiterals << 3);
                   }
                   if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
-                     /* Rep match */
-                     nCurCommandSize += 1; /* rep-match follows */
+                     /* Rep match - don't include 'rep match follows' bit */
 
                      /* Match length */
                      nCurCommandSize += salvador_get_match_varlen_size_rep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
                   }
                   else {
-                     /* Match with offset */
-                     nCurCommandSize += 1; /* match with offset follows */
+                     /* Match with offset - don't include 'match with offset follows' bit */
 
                      /* High bits of match offset */
                      nCurCommandSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
@@ -1048,15 +1046,13 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   nReducedCommandSize += ((nNumLiterals + nNextLiterals) << 3);
 
                   if (pBestMatch[nNextIndex].offset == nRepMatchOffset && (nNumLiterals + pMatch->length + nNextLiterals) != 0 && nRepMatchOffset) {
-                     /* Rep match */
-                     nReducedCommandSize += 1; /* rep-match follows */
+                     /* Rep match - don't include 'rep match follows' bit */
 
                      /* Match length */
                      nReducedCommandSize += salvador_get_match_varlen_size_rep(pBestMatch[nNextIndex].length - MIN_ENCODED_MATCH_SIZE);
                   }
                   else {
-                     /* Match with offset */
-                     nReducedCommandSize += 1; /* match with offset follows */
+                     /* Match with offset - don't include 'match with offset follows' bit  */
 
                      /* High bits of match offset */
                      nReducedCommandSize += salvador_get_elias_size(((pBestMatch[nNextIndex].offset - 1) >> 7) + 1);
