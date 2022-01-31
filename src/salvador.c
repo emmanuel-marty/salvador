@@ -114,6 +114,9 @@ static int do_compress(const char *pszInFilename, const char *pszOutFilename, co
    unsigned char *pDecompressedData;
    unsigned char *pCompressedData;
 
+   if (nOptions & OPT_BACKWARD)
+      nFlags |= FLG_IS_BACKWARD;
+
    if (nOptions & OPT_VERBOSE) {
       nStartTime = do_get_time();
    }
@@ -279,6 +282,9 @@ static int do_decompress(const char *pszInFilename, const char *pszOutFilename, 
    unsigned char *pDecompressedData;
    int nFlags = (nOptions & OPT_CLASSIC) ? 0 : FLG_IS_INVERTED;
 
+   if (nOptions & OPT_BACKWARD)
+      nFlags |= FLG_IS_BACKWARD;
+
    /* Read the whole compressed file in memory */
 
    FILE *f_in = fopen(pszInFilename, "rb");
@@ -417,6 +423,9 @@ static int do_compare(const char *pszInFilename, const char *pszOutFilename, con
    unsigned char *pOriginalData = NULL;
    unsigned char *pDecompressedData = NULL;
    int nFlags = (nOptions & OPT_CLASSIC) ? 0 : FLG_IS_INVERTED;
+
+   if (nOptions & OPT_BACKWARD)
+      nFlags |= FLG_IS_BACKWARD;
 
    /* Read the whole compressed file in memory */
 
@@ -643,6 +652,9 @@ static int do_self_test(const unsigned int nOptions, const unsigned int nMaxWind
    unsigned int nSeed = 123;
    int nFlags = FLG_IS_INVERTED;
    int i;
+
+   if (nOptions & OPT_BACKWARD)
+      nFlags |= FLG_IS_BACKWARD;
 
    pGeneratedData = (unsigned char*)malloc(4 * BLOCK_SIZE);
    if (!pGeneratedData) {

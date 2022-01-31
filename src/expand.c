@@ -60,11 +60,18 @@ static inline FORCE_INLINE int salvador_read_bit(const unsigned char **ppInBlock
    return nBit;
 }
 
-static inline FORCE_INLINE int salvador_read_elias(const unsigned char** ppInBlock, const unsigned char* pDataEnd, const int nInitialValue, int* nCurBitMask, unsigned char* bits) {
+static inline FORCE_INLINE int salvador_read_elias(const unsigned char** ppInBlock, const unsigned char* pDataEnd, const int nInitialValue, const int nIsBackward, int* nCurBitMask, unsigned char* bits) {
    int nValue = nInitialValue;
 
-   while (!salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits)) {
-      nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+   if (nIsBackward) {
+      while (salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits) == 1) {
+         nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+      }
+   }
+   else {
+      while (!salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits)) {
+         nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+      }
    }
 
    return nValue;
@@ -80,13 +87,23 @@ static inline FORCE_INLINE int salvador_read_elias_inverted(const unsigned char*
    return nValue;
 }
 
-static inline FORCE_INLINE int salvador_read_elias_prefix(const unsigned char** ppInBlock, const unsigned char* pDataEnd, const int nInitialValue, int* nCurBitMask, unsigned char* bits, unsigned int nFirstBit) {
+static inline FORCE_INLINE int salvador_read_elias_prefix(const unsigned char** ppInBlock, const unsigned char* pDataEnd, const int nInitialValue, const int nIsBackward, int* nCurBitMask, unsigned char* bits, unsigned int nFirstBit) {
    int nValue = nInitialValue;
 
-   if (!nFirstBit) {
-      nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
-      while (!salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits)) {
+   if (nIsBackward) {
+      if (nFirstBit) {
          nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+         while (salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits) == 1) {
+            nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+         }
+      }
+   }
+   else {
+      if (!nFirstBit) {
+         nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+         while (!salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits)) {
+            nValue = (nValue << 1) | salvador_read_bit(ppInBlock, pDataEnd, nCurBitMask, bits);
+         }
       }
    }
 
@@ -108,7 +125,8 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
    unsigned char bits = 0;
    int nMatchOffset = 1;
    int nIsFirstCommand = 1;
-   const int nIsInverted = nFlags & FLG_IS_INVERTED;
+   const int nIsInverted = (nFlags & FLG_IS_INVERTED) && !(nFlags & FLG_IS_BACKWARD);
+   const int nIsBackward = (nFlags & FLG_IS_BACKWARD) ? 1 : 0;
    int nDecompressedSize = 0;
 
    if (pInputData >= pInputDataEnd)
@@ -130,7 +148,7 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
       }
 
       if (nIsMatchWithOffset == 0) {
-         unsigned int nLiterals = salvador_read_elias(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
+         unsigned int nLiterals = salvador_read_elias(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits);
 
          /* Count literals */
 
@@ -159,7 +177,7 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
          if (nIsInverted)
             nMatchOffsetHighByte = salvador_read_elias_inverted(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
          else
-            nMatchOffsetHighByte = salvador_read_elias(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
+            nMatchOffsetHighByte = salvador_read_elias(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits);
 
          if (nMatchOffsetHighByte == 256)
             break;
@@ -169,17 +187,20 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
             return -1;
 
          unsigned int nMatchOffsetLowByte = (unsigned int)(*pInputData++);
-         nMatchOffset = (nMatchOffsetHighByte << 7) | (127 - (nMatchOffsetLowByte >> 1));
+         if (nIsBackward)
+            nMatchOffset = (nMatchOffsetHighByte << 7) | (nMatchOffsetLowByte >> 1);
+         else
+            nMatchOffset = (nMatchOffsetHighByte << 7) | (127 - (nMatchOffsetLowByte >> 1));
          nMatchOffset++;
 
-         nMatchLen = salvador_read_elias_prefix(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits, nMatchOffsetLowByte & 1);
+         nMatchLen = salvador_read_elias_prefix(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits, nMatchOffsetLowByte & 1);
 
          nMatchLen += (2 - 1);
       }
       else {
          /* Rep-match */
 
-         nMatchLen = salvador_read_elias(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
+         nMatchLen = salvador_read_elias(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits);
       }
 
       /* Count matched bytes */
@@ -209,7 +230,8 @@ size_t salvador_decompress(const unsigned char *pInputData, unsigned char *pOutD
    unsigned char bits = 0;
    int nMatchOffset = 1;
    int nIsFirstCommand = 1;
-   const int nIsInverted = nFlags & FLG_IS_INVERTED;
+   const int nIsInverted = (nFlags & FLG_IS_INVERTED) && !(nFlags & FLG_IS_BACKWARD);
+   const int nIsBackward = (nFlags & FLG_IS_BACKWARD) ? 1 : 0;
 
    if (pInputData >= pInputDataEnd && pCurOutData < pOutDataEnd)
       return -1;
@@ -230,7 +252,7 @@ size_t salvador_decompress(const unsigned char *pInputData, unsigned char *pOutD
       }
 
       if (nIsMatchWithOffset == 0) {
-         unsigned int nLiterals = salvador_read_elias(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
+         unsigned int nLiterals = salvador_read_elias(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits);
 
          /* Copy literals */
 
@@ -261,7 +283,7 @@ size_t salvador_decompress(const unsigned char *pInputData, unsigned char *pOutD
          if (nIsInverted)
             nMatchOffsetHighByte = salvador_read_elias_inverted(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
          else
-            nMatchOffsetHighByte = salvador_read_elias(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
+            nMatchOffsetHighByte = salvador_read_elias(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits);
 
          if (nMatchOffsetHighByte == 256)
             break;
@@ -271,17 +293,20 @@ size_t salvador_decompress(const unsigned char *pInputData, unsigned char *pOutD
             return -1;
 
          unsigned int nMatchOffsetLowByte = (unsigned int)(*pInputData++);
-         nMatchOffset = (nMatchOffsetHighByte << 7) | (127 - (nMatchOffsetLowByte >> 1));
+         if (nIsBackward)
+            nMatchOffset = (nMatchOffsetHighByte << 7) | (nMatchOffsetLowByte >> 1);
+         else
+            nMatchOffset = (nMatchOffsetHighByte << 7) | (127 - (nMatchOffsetLowByte >> 1));
          nMatchOffset++;
 
-         nMatchLen = salvador_read_elias_prefix(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits, nMatchOffsetLowByte & 1);
+         nMatchLen = salvador_read_elias_prefix(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits, nMatchOffsetLowByte & 1);
 
          nMatchLen += (2 - 1);
       }
       else {
          /* Rep-match */
 
-         nMatchLen = salvador_read_elias(&pInputData, pInputDataEnd, 1, &nCurBitMask, &bits);
+         nMatchLen = salvador_read_elias(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits);
       }
 
       /* Copy matched bytes */

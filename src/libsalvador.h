@@ -36,5 +36,6 @@
 #include "expand.h"
 
 #define FLG_IS_INVERTED  1       /**< Use inverted (V2) format */
+#define FLG_IS_BACKWARD  2       /**< Use backward encoding */
 
 #endif /* _LIB_SALVADOR_H */
