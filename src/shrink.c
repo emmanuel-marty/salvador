@@ -317,14 +317,10 @@ static int salvador_write_split_elias_value(unsigned char* pOutData, int nOutOff
  * @return number of extra bits required
  */
 static inline int salvador_get_literals_varlen_size(const int nLength) {
-   if (nLength >= 0) {
-      if (nLength < 8192)
-         return salvador_cost_for_len[nLength];
-      else
-         return TOKEN_SIZE + salvador_get_elias_size(nLength);
-   }
+   if (nLength >= 0 && nLength < 8192)
+      return salvador_cost_for_len[nLength];
    else
-      return 0;
+      return TOKEN_SIZE + salvador_get_elias_size(nLength);
 }
 
 /**
