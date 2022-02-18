@@ -326,8 +326,7 @@ static inline int salvador_get_literals_varlen_size(const int nLength) {
 /**
  * Get the number of extra bits required to represent a non-rep match length
  *
- * @param nLength encoded match length (actual match length - MIN_ENCODED_MATCH_SIZE)
- * @param nIsRepMatch 1 if requesting bits required to represent a rep-match, 0 to represent the length of a match with an offset
+ * @param __nLength encoded match length (actual match length - MIN_ENCODED_MATCH_SIZE)
  *
  * @return number of extra bits required
  */
@@ -336,8 +335,7 @@ static inline int salvador_get_literals_varlen_size(const int nLength) {
 /**
  * Get the number of extra bits required to represent a repmatch length
  *
- * @param nLength encoded match length (actual match length - MIN_ENCODED_MATCH_SIZE)
- * @param nIsRepMatch 1 if requesting bits required to represent a rep-match, 0 to represent the length of a match with an offset
+ * @param __nLength encoded match length (actual match length - MIN_ENCODED_MATCH_SIZE)
  *
  * @return number of extra bits required
  */
@@ -473,8 +471,8 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       memset(visited + nStartOffset, 0, (nEndOffset - nStartOffset) * sizeof(salvador_visited));
    }
 
-   for (i = nStartOffset; i != nEndOffset; i++) {
-      salvador_arrival *cur_arrival = &arrival[i * nMaxArrivalsPerPosition];
+   salvador_arrival* cur_arrival;
+   for (i = nStartOffset, cur_arrival = &arrival[nStartOffset * nMaxArrivalsPerPosition]; i != nEndOffset; i++, cur_arrival += nMaxArrivalsPerPosition) {
       salvador_arrival *pDestLiteralSlots = &cur_arrival[nMaxArrivalsPerPosition];
       int j, m;
       
@@ -572,17 +570,16 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                         const int nLen0 = rle_len[i - nRepOffset];
                         const int nLen1 = rle_len[i];
                         const int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
-                        const unsigned char* pInWindowAtPos;
+                        const unsigned char* pInWindowAtPos = pInWindowStart + nMinLen;
 
-                        pInWindowAtPos = pInWindowStart + nMinLen;
                         if (pInWindowAtPos > pInWindowMax)
                            pInWindowAtPos = pInWindowMax;
 
-                        while ((pInWindowAtPos + 8) < pInWindowMax && !memcmp(pInWindowAtPos - nRepOffset, pInWindowAtPos, 8))
+                        while ((pInWindowAtPos + 8) < pInWindowMax && !memcmp(pInWindowAtPos, pInWindowAtPos - nRepOffset, 8))
                            pInWindowAtPos += 8;
-                        while ((pInWindowAtPos + 4) < pInWindowMax && !memcmp(pInWindowAtPos - nRepOffset, pInWindowAtPos, 4))
+                        while ((pInWindowAtPos + 4) < pInWindowMax && !memcmp(pInWindowAtPos, pInWindowAtPos - nRepOffset, 4))
                            pInWindowAtPos += 4;
-                        while (pInWindowAtPos < pInWindowMax && pInWindowAtPos[-nRepOffset] == pInWindowAtPos[0])
+                        while (pInWindowAtPos < pInWindowMax && pInWindowAtPos[0] == pInWindowAtPos[-nRepOffset])
                            pInWindowAtPos++;
                         const int nCurRepLen = (const int)(pInWindowAtPos - pInWindowStart);
 
@@ -902,11 +899,10 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                      if (nMaxLen >= 1) {
                         int nCurCommandSize, nReducedCommandSize;
 
-                        /* -- Original: Match with offset -- */
-                        nCurCommandSize = 1; /* match with offset follows */
+                        /* -- Original: Match with offset. Skip 'match with offset follows' bit. -- */
 
                         /* High bits of match offset */
-                        nCurCommandSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
+                        nCurCommandSize = salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
 
                         /* Low byte of match offset */
                         nCurCommandSize += 7;
@@ -917,11 +913,10 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                         /* Literals after command */
                         nCurCommandSize += salvador_get_literals_varlen_size(nNextLiterals);
 
-                        /* -- Reduced: Rep match -- */
-                        nReducedCommandSize = 1; /* rep-match follows */
+                        /* -- Reduced: Rep match. Skip 'rep-match follows' bit. -- */
 
                         /* Match length */
-                        nReducedCommandSize += salvador_get_match_varlen_size_rep(nMaxLen - MIN_ENCODED_MATCH_SIZE);
+                        nReducedCommandSize = salvador_get_match_varlen_size_rep(nMaxLen - MIN_ENCODED_MATCH_SIZE);
 
                         /* Literals after command */
                         nReducedCommandSize += (pMatch->length - nMaxLen) << 3;
@@ -1080,8 +1075,8 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             }
          }
 
-         if ((i + pMatch->length) < nEndOffset && pMatch->offset > 0 && pMatch->length >= MIN_ENCODED_MATCH_SIZE &&
-            pBestMatch[i + pMatch->length].offset > 0 &&
+         if ((i + pMatch->length) < nEndOffset && pMatch->offset && pMatch->length >= MIN_ENCODED_MATCH_SIZE &&
+            pBestMatch[i + pMatch->length].offset &&
             pBestMatch[i + pMatch->length].length >= MIN_ENCODED_MATCH_SIZE &&
             (pMatch->length + pBestMatch[i + pMatch->length].length) <= MAX_VARLEN &&
             (i + pMatch->length) >= pMatch->offset &&
@@ -1101,15 +1096,13 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
 
             int nCurPartialSize = 0;
             if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
-               /* Rep match */
-               nCurPartialSize += 1; /* rep-match follows */
+               /* Rep match. Don't include 'rep-match follows' bit. */
 
                /* Match length */
                nCurPartialSize += salvador_get_match_varlen_size_rep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
             }
             else {
-               /* Match with offset */
-               nCurPartialSize += 1; /* match with offset follows */
+               /* Match with offset. Don't include 'match with offset follows' bit. */
 
                /* High bits of match offset */
                nCurPartialSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
@@ -1135,15 +1128,13 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
 
             if (nNextIndex < nEndOffset) {
                if (pBestMatch[i + pMatch->length].offset && pBestMatch[nNextIndex].offset == pBestMatch[i + pMatch->length].offset && nNextLiterals != 0) {
-                  /* Rep match */
-                  nCurPartialSize += 1; /* rep-match follows */
+                  /* Rep match. Don't include 'rep-match follows' bit. */
 
                   /* Match length */
                   nCurPartialSize += salvador_get_match_varlen_size_rep(pBestMatch[nNextIndex].length - MIN_ENCODED_MATCH_SIZE);
                }
                else {
-                  /* Match with offset */
-                  nCurPartialSize += 1; /* match with offset follows */
+                  /* Match with offset. Don't include 'match with offset follows' bit. */
 
                   /* High bits of match offset */
                   nCurPartialSize += salvador_get_elias_size(((pBestMatch[nNextIndex].offset - 1) >> 7) + 1);
@@ -1158,15 +1149,13 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
 
             int nReducedPartialSize = 0;
             if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
-               /* Rep match */
-               nReducedPartialSize += 1; /* rep-match follows */
+               /* Rep match. Don't include 'rep-match follows' bit. */
 
                /* Match length */
                nReducedPartialSize += salvador_get_match_varlen_size_rep(pMatch->length + pBestMatch[i + pMatch->length].length - MIN_ENCODED_MATCH_SIZE);
             }
             else {
-               /* Match with offset */
-               nReducedPartialSize += 1; /* match with offset follows */
+               /* Match with offset. Don't include 'match with offset follows' bit. */
 
                /* High bits of match offset */
                nReducedPartialSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
@@ -1181,16 +1170,14 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
             int nCannotReduce = 0;
             if (nNextIndex < nEndOffset) {
                if (pMatch->offset && pBestMatch[nNextIndex].offset == pMatch->offset && nNextLiterals != 0) {
-                  /* Rep match */
-                  nReducedPartialSize += 1; /* rep-match follows */
+                  /* Rep match. Don't include 'rep-match follows' bit. */
 
                   /* Match length */
                   nReducedPartialSize += salvador_get_match_varlen_size_rep(pBestMatch[nNextIndex].length - MIN_ENCODED_MATCH_SIZE);
                }
                else {
                   if (pBestMatch[nNextIndex].length >= MIN_ENCODED_MATCH_SIZE) {
-                     /* Match with offset */
-                     nReducedPartialSize += 1; /* match with offset follows */
+                     /* Match with offset. Don't include 'match with offset follows' bit. */
 
                      /* High bits of match offset */
                      nReducedPartialSize += salvador_get_elias_size(((pBestMatch[nNextIndex].offset - 1) >> 7) + 1);
@@ -1235,7 +1222,6 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                if (nNextIndex < nEndOffset && nNextLiterals != 0 &&
                   pBestMatch[nNextIndex].length == 1 &&
                   pBestMatch[nNextIndex].offset == pMatch->offset) {
-                  int nCurCommandSize, nCurRepMatchSize, nReducedCommandSize;
                   int nNextNextIndex = nNextIndex + pBestMatch[nNextIndex].length;
                   int nNextNextLiterals = 0;
 
@@ -1247,6 +1233,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   if (nNextNextIndex < nEndOffset && nNextNextLiterals != 0 &&
                      pBestMatch[nNextNextIndex].length >= MIN_ENCODED_MATCH_SIZE &&
                      pBestMatch[nNextNextIndex].offset != pBestMatch[nNextIndex].offset) {
+                     int nCurCommandSize, nCurRepMatchSize, nReducedCommandSize;
 
                      /* First command: match with offset */
                      nCurCommandSize = salvador_get_literals_varlen_size(nNumLiterals);
@@ -1300,7 +1287,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
          nNumLiterals = 0;
       }
       else if (pMatch->length == 1) {
-         if (nNumLiterals > 0) {
+         if (nNumLiterals != 0) {
             int nNextIndex = i + pMatch->length;
             int nNextLiterals = 0;
 
@@ -1309,7 +1296,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                nNextIndex++;
             }
 
-            if (nNextLiterals > 0) {
+            if (nNextLiterals != 0) {
                int nCurPartialSize = salvador_get_literals_varlen_size(nNumLiterals);
                nCurPartialSize += TOKEN_SIZE + salvador_get_match_varlen_size_rep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
                nCurPartialSize += salvador_get_literals_varlen_size(nNextLiterals);
@@ -1345,7 +1332,6 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
  * @param nStartOffset current offset in input window (typically the number of previously compressed bytes)
  * @param nEndOffset offset to end finding matches at (typically the size of the total input window in bytes
  * @param pOutData pointer to output buffer
- * @param nOutOffset starting offset into outpout buffer
  * @param nMaxOutDataSize maximum size of output buffer, in bytes
  * @param nCurBitsOffset write index into output buffer, of current byte being filled with bits
  * @param nCurBitShift bit shift count
@@ -1355,9 +1341,10 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
  *
  * @return size of compressed data in output buffer, or -1 if the data is uncompressible
  */
-static int salvador_write_block(salvador_compressor* pCompressor, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, int nOutOffset, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
+static int salvador_write_block(salvador_compressor* pCompressor, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
    const salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int nRepMatchOffset = *nCurRepMatchOffset;
+   int nOutOffset = 0;
    const int nMaxOffset = pCompressor->max_offset;
    const int nIsInverted = pCompressor->flags & FLG_IS_INVERTED;
    const int nIsBackward = (pCompressor->flags & FLG_IS_BACKWARD) ? 1 : 0;
@@ -1369,7 +1356,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
    for (i = nStartOffset; i < nEndOffset; ) {
       const salvador_final_match* pMatch = pBestMatch + i;
 
-      if (pMatch->length >= 2 || (pMatch->length >= 1 && pMatch->offset == nRepMatchOffset && nNumLiterals != 0)) {
+      if (pMatch->length >= 2 || (pMatch->length == 1 && pMatch->offset == nRepMatchOffset && nNumLiterals != 0)) {
          const int nMatchLen = pMatch->length;
          const int nMatchOffset = pMatch->offset;
          const int nEncodedMatchLen = nMatchLen - 2;
@@ -1571,7 +1558,6 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
  * @return size of compressed data in output buffer, or -1 if the data is uncompressible
  */
 static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int nPreviousBlockSize, const int nInDataSize, unsigned char *pOutData, const int nMaxOutDataSize, int *nCurBitsOffset, int *nCurBitShift, int *nFinalLiterals, int *nCurRepMatchOffset, const int nBlockFlags) {
-   int nOutOffset = 0;
    const int nEndOffset = nPreviousBlockSize + nInDataSize;
    int *rle_len = (int*)pCompressor->intervals /* reuse */;
    int *first_offset_for_byte = pCompressor->first_offset_for_byte;
@@ -1649,11 +1635,12 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
    i = 0;
    while (i < nEndOffset) {
       int nRangeStartIdx = i;
-      unsigned char c = pInWindow[nRangeStartIdx];
+      const unsigned char c = pInWindow[nRangeStartIdx];
+      
       do {
          i++;
-      }
-      while (i < nEndOffset && pInWindow[i] == c);
+      } while (i < nEndOffset && pInWindow[i] == c);
+      
       while (nRangeStartIdx < i) {
          rle_len[nRangeStartIdx] = i - nRangeStartIdx;
          nRangeStartIdx++;
@@ -1757,7 +1744,7 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
 
    /* Write compressed block */
 
-   return salvador_write_block(pCompressor, pInWindow, nPreviousBlockSize, nEndOffset, pOutData, nOutOffset, nMaxOutDataSize, nCurBitsOffset, nCurBitShift, nFinalLiterals, nCurRepMatchOffset, nBlockFlags);
+   return salvador_write_block(pCompressor, pInWindow, nPreviousBlockSize, nEndOffset, pOutData, nMaxOutDataSize, nCurBitsOffset, nCurBitShift, nFinalLiterals, nCurRepMatchOffset, nBlockFlags);
 }
 
 /* Forward declaration */
