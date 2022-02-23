@@ -416,8 +416,8 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                            }
 
                            if (!fwd_match[r].length) {
-                              fwd_match[r].offset = nMatchOffset;
                               fwd_match[r].length = nCurRepLen;
+                              fwd_match[r].offset = nMatchOffset;
                               fwd_depth[r] = 0;
 
                               if (nDepth < 9)
@@ -450,6 +450,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
    salvador_arrival *arrival = pCompressor->arrival - (nStartOffset * nMaxArrivalsPerPosition);
    const int* rle_len = (const int*)pCompressor->intervals /* reuse */;
    salvador_visited* visited = ((salvador_visited*)pCompressor->pos_data) - nStartOffset /* reuse */;
+   salvador_arrival* cur_arrival;
    int i;
 
    if ((nEndOffset - nStartOffset) > pCompressor->block_size) return;
@@ -471,7 +472,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       memset(visited + nStartOffset, 0, (nEndOffset - nStartOffset) * sizeof(salvador_visited));
    }
 
-   salvador_arrival* cur_arrival;
    for (i = nStartOffset, cur_arrival = &arrival[nStartOffset * nMaxArrivalsPerPosition]; i != nEndOffset; i++, cur_arrival += nMaxArrivalsPerPosition) {
       salvador_arrival *pDestLiteralSlots = &cur_arrival[nMaxArrivalsPerPosition];
       int j, m;
@@ -607,12 +607,13 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
          for (d = 0; d <= nOrigMatchDepth; d += (nOrigMatchDepth ? nOrigMatchDepth : 1)) {
             const int nMatchLen = nOrigMatchLen - d;
             const int nMatchOffset = nOrigMatchOffset - d;
+            int nNonRepMatchArrivalIdx, nStartingMatchLen, k;
 
             if (nInsertForwardReps) {
                salvador_insert_forward_match(pCompressor, pInWindow, i, nMatchOffset, nStartOffset, nEndOffset, 0);
             }
 
-            int nNonRepMatchArrivalIdx = -1;
+            nNonRepMatchArrivalIdx = -1;
             for (j = 0; j < nNumArrivalsForThisPos; j++) {
                const int nRepOffset = cur_arrival[j].rep_offset;
 
@@ -621,8 +622,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
                   break;
                }
             }
-
-            int nStartingMatchLen, k;
 
             if (nNonRepMatchArrivalIdx >= 0) {
                const int nNoRepmatchOffsetCost = cur_arrival[nNonRepMatchArrivalIdx].cost /* the actual cost of the literals themselves accumulates up the chain */ + OFFSET_COST(nMatchOffset);
@@ -985,7 +984,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   int nCurCommandSize = 0;
                   if (nNumLiterals != 0) {
                      nCurCommandSize += salvador_get_literals_varlen_size(nNumLiterals);
-                     nCurCommandSize += (nNumLiterals << 3);
+                     /* Don't include current command's literal databits */
                   }
                   if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
                      /* Rep match - don't include 'rep match follows' bit */
@@ -1010,19 +1009,17 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   int nNextCommandSize = 0;
                   if (nNextLiterals != 0) {
                      nNextCommandSize += salvador_get_literals_varlen_size(nNextLiterals);
-                     nNextCommandSize += (nNextLiterals << 3);
+                     /* Don't include next command's literal databits */
                   }
-                  if (pMatch->offset && pBestMatch[nNextIndex].offset == pMatch->offset && nNextLiterals != 0) {
-                     /* Rep match */
-                     nNextCommandSize += 1; /* rep-match follows */
 
+                  /* Rep match or match with offset follows */
+                  nNextCommandSize += 1;
+
+                  if (pMatch->offset && pBestMatch[nNextIndex].offset == pMatch->offset && nNextLiterals != 0) {
                      /* Match length */
                      nNextCommandSize += salvador_get_match_varlen_size_rep(pBestMatch[nNextIndex].length - MIN_ENCODED_MATCH_SIZE);
                   }
                   else {
-                     /* Match with offset */
-                     nNextCommandSize += 1; /* match with offset follows */
-
                      /* High bits of match offset */
                      nNextCommandSize += salvador_get_elias_size(((pBestMatch[nNextIndex].offset - 1) >> 7) + 1);
 
@@ -1038,7 +1035,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   /* Calculate the cost of replacing this match command by literals + the next command with the cost of encoding these literals */
                   int nReducedCommandSize = (pMatch->length << 3);
                   nReducedCommandSize += salvador_get_literals_varlen_size(nNumLiterals + pMatch->length + nNextLiterals);
-                  nReducedCommandSize += ((nNumLiterals + nNextLiterals) << 3);
+                  /* Don't include current + next command's literal databits */
 
                   if (pBestMatch[nNextIndex].offset == nRepMatchOffset && (nNumLiterals + pMatch->length + nNextLiterals) != 0 && nRepMatchOffset) {
                      /* Rep match - don't include 'rep match follows' bit */
@@ -1094,18 +1091,18 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                nNextLiterals++;
             }
 
-            int nCurPartialSize = 0;
+            int nCurPartialSize;
             if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
                /* Rep match. Don't include 'rep-match follows' bit. */
 
                /* Match length */
-               nCurPartialSize += salvador_get_match_varlen_size_rep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
+               nCurPartialSize = salvador_get_match_varlen_size_rep(pMatch->length - MIN_ENCODED_MATCH_SIZE);
             }
             else {
                /* Match with offset. Don't include 'match with offset follows' bit. */
 
                /* High bits of match offset */
-               nCurPartialSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
+               nCurPartialSize = salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
 
                /* Low byte of match offset */
                nCurPartialSize += 7;
@@ -1147,18 +1144,18 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                }
             }
 
-            int nReducedPartialSize = 0;
+            int nReducedPartialSize;
             if (pMatch->offset == nRepMatchOffset && nNumLiterals != 0 && nRepMatchOffset) {
                /* Rep match. Don't include 'rep-match follows' bit. */
 
                /* Match length */
-               nReducedPartialSize += salvador_get_match_varlen_size_rep(pMatch->length + pBestMatch[i + pMatch->length].length - MIN_ENCODED_MATCH_SIZE);
+               nReducedPartialSize = salvador_get_match_varlen_size_rep(pMatch->length + pBestMatch[i + pMatch->length].length - MIN_ENCODED_MATCH_SIZE);
             }
             else {
                /* Match with offset. Don't include 'match with offset follows' bit. */
 
                /* High bits of match offset */
-               nReducedPartialSize += salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
+               nReducedPartialSize = salvador_get_elias_size(((pMatch->offset - 1) >> 7) + 1);
 
                /* Low byte of match offset */
                nReducedPartialSize += 7;
@@ -1200,8 +1197,8 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                /* Join */
 
                pMatch->length += pBestMatch[i + nMatchLen].length;
+               pBestMatch[i + nMatchLen].length = 0;
                pBestMatch[i + nMatchLen].offset = 0;
-               pBestMatch[i + nMatchLen].length = -1;
                nDidReduce = 1;
                continue;
             }
