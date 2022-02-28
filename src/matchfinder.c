@@ -196,7 +196,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
    unsigned short *depthptr;
    int nPrevOffset, nPrevLen, nCurDepth;
    unsigned short* cur_depth;
-   int nMatchOffset;
+   int nMatchOffset, nMatchLen;
    const int nMaxOffset = pCompressor->max_offset;
 
    /**
@@ -243,7 +243,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
       nMatchOffset = (int)(nOffset - match_pos);
 
       if (nMatchOffset <= nMaxOffset) {
-         const int nMatchLen = (const int)(ref >> (LCP_SHIFT + TAG_BITS));
+         nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
          matchptr->length = nMatchLen;
          matchptr->offset = nMatchOffset;
@@ -265,7 +265,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
             nMatchOffset = (int)(nOffset - match_pos);
 
             if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
-               const int nMatchLen = (const int)(ref >> (LCP_SHIFT + TAG_BITS));
+               nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
                if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                   *cur_depth = ++nCurDepth;
@@ -295,7 +295,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
          nMatchOffset = (int)(nOffset - match_pos);
 
          if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
-            const int nMatchLen = (const int)(ref >> (LCP_SHIFT + TAG_BITS));
+            nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
             if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                *cur_depth = ++nCurDepth;
@@ -323,7 +323,7 @@ static int salvador_find_matches_at(salvador_compressor *pCompressor, const int 
          nMatchOffset = (int)(nOffset - match_pos);
 
          if (nMatchOffset <= nMaxOffset && nMatchOffset != nPrevOffset) {
-            const int nMatchLen = (const int)(ref >> (LCP_SHIFT + TAG_BITS));
+            nMatchLen = (int)(ref >> (LCP_SHIFT + TAG_BITS));
 
             if (nPrevOffset && nPrevLen > 2 && nMatchOffset == (nPrevOffset - 1) && nMatchLen == (nPrevLen - 1) && cur_depth && nCurDepth < LCP_MAX) {
                *cur_depth = ++nCurDepth;
