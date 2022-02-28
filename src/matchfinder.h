@@ -66,9 +66,8 @@ void salvador_skip_matches(salvador_compressor *pCompressor, const int nStartOff
  * @param nMatchesPerOffset maximum number of matches to store for each offset
  * @param nStartOffset current offset in input window (typically the number of previously compressed bytes)
  * @param nEndOffset offset to end finding matches at (typically the size of the total input window in bytes
- * @param nBlockFlags bit 0: 1 for first block, 0 otherwise; bit 1: 1 for last block, 0 otherwise
  */
-void salvador_find_all_matches(salvador_compressor *pCompressor, const int nMatchesPerOffset, const int nStartOffset, const int nEndOffset, const int nBlockFlags);
+void salvador_find_all_matches(salvador_compressor *pCompressor, const int nMatchesPerOffset, const int nStartOffset, const int nEndOffset);
 
 #ifdef __cplusplus
 }

@@ -409,7 +409,6 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                               if (fwd_match[r].offset == nMatchOffset) {
                                  if ((int)fwd_match[r].length < nCurRepLen && fwd_depth[r] == 0) {
                                     fwd_match[r].length = nCurRepLen;
-                                    fwd_depth[r] = 0;
                                  }
                                  break;
                               }
@@ -1915,7 +1914,7 @@ static int salvador_compressor_shrink_block(salvador_compressor *pCompressor, co
       if (nPreviousBlockSize) {
          salvador_skip_matches(pCompressor, 0, nPreviousBlockSize);
       }
-      salvador_find_all_matches(pCompressor, NMATCHES_PER_INDEX, nPreviousBlockSize, nPreviousBlockSize + nInDataSize, nBlockFlags);
+      salvador_find_all_matches(pCompressor, NMATCHES_PER_INDEX, nPreviousBlockSize, nPreviousBlockSize + nInDataSize);
 
       nCompressedSize = salvador_optimize_and_write_block(pCompressor, pInWindow, nPreviousBlockSize, nInDataSize, pOutData, nMaxOutDataSize, nCurBitsOffset, nCurBitShift, nFinalLiterals, nCurRepMatchOffset, nBlockFlags);
    }
