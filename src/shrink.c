@@ -371,21 +371,30 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
 
                visited[nRepPos] = nMatchOffset;
 
-               if (nRepPos >= nMatchOffset) {
-                  salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
+               salvador_match* fwd_match = pCompressor->match + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
 
-                  if (fwd_match[NMATCHES_PER_INDEX - 1].length == 0) {
+               if (fwd_match[NMATCHES_PER_INDEX - 1].length == 0) {
+                  if (nRepPos >= nMatchOffset) {
                      const unsigned char* pInWindowStart = pInWindow + nRepPos;
 
                      if (pInWindowStart[0] == pInWindowStart[-nMatchOffset]) {
                         if (nRepOffset) {
                            const int nLen0 = rle_len[nRepPos - nMatchOffset];
                            const int nLen1 = rle_len[nRepPos];
-                           const int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
+                           int nMinLen = (nLen0 < nLen1) ? nLen0 : nLen1;
+                           int nMaxRepLen, r;
 
-                           int nMaxRepLen = nEndOffset - nRepPos;
+                           nMaxRepLen = nEndOffset - nRepPos;
                            if (nMaxRepLen > LCP_MAX)
                               nMaxRepLen = LCP_MAX;
+
+                           for (r = 0; fwd_match[r].length; r++) {
+                              if (fwd_match[r].offset == nMatchOffset) {
+                                 if (nMinLen < (const int)fwd_match[r].length)
+                                    nMinLen = fwd_match[r].length;
+                                 break;
+                              }
+                           }
 
                            const unsigned char* pInWindowMax = pInWindowStart + nMaxRepLen;
                            const unsigned char* pInWindowAtRepOffset = pInWindowStart + nMinLen;
@@ -401,18 +410,7 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
                               pInWindowAtRepOffset++;
 
                            const int nCurRepLen = (const int)(pInWindowAtRepOffset - pInWindowStart);
-
                            unsigned short* fwd_depth = pCompressor->match_depth + ((nRepPos - nStartOffset) << MATCHES_PER_INDEX_SHIFT);
-                           int r;
-
-                           for (r = 0; fwd_match[r].length; r++) {
-                              if (fwd_match[r].offset == nMatchOffset) {
-                                 if ((int)fwd_match[r].length < nCurRepLen && fwd_depth[r] == 0) {
-                                    fwd_match[r].length = nCurRepLen;
-                                 }
-                                 break;
-                              }
-                           }
 
                            if (!fwd_match[r].length) {
                               fwd_match[r].length = nCurRepLen;
@@ -421,6 +419,11 @@ static void salvador_insert_forward_match(salvador_compressor *pCompressor, cons
 
                               if (nDepth < 9)
                                  salvador_insert_forward_match(pCompressor, pInWindow, nRepPos, nMatchOffset, nStartOffset, nEndOffset, nDepth + 1);
+                           }
+                           else {
+                              if ((const int)fwd_match[r].length < nCurRepLen && fwd_depth[r] == 0) {
+                                 fwd_match[r].length = nCurRepLen;
+                              }
                            }
                         }
                      }
