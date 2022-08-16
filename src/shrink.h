@@ -48,16 +48,15 @@ extern "C" {
 #define EXCL_VISITED_MASK  0x7fffffffffffffffULL
 
 #define NINITIAL_ARRIVALS_PER_POSITION 40
-#define NMAX_ARRIVALS_PER_POSITION 92
-#define NMATCHES_PER_INDEX 64
-#define MATCHES_PER_INDEX_SHIFT 6
+#define NMAX_ARRIVALS_PER_POSITION 109
+#define NMATCHES_PER_INDEX 78
 
 #define LEAVE_ALONE_MATCH_SIZE 340
 
 /** One match option */
 typedef struct _salvador_match {
-   unsigned int length:14;
-   unsigned int offset:17;
+   unsigned short length;
+   unsigned short offset;
 } salvador_match;
 
 /** One finalized match */
