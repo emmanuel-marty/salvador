@@ -23,6 +23,7 @@ Included 8-bit decompression code:
 
 External decompression code:
 
+ * [6803](https://github.com/dougmasten/zx0-6803) by Simon Jonassen and Doug Masten. Use the -classic flag to compress data for the 6803.
  * [6809 and 6309](https://github.com/dougmasten/zx0-6x09) by Doug Masten. Use the -classic flag to compress data for the 6809 or 6309 depackers.
 
 License:
