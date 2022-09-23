@@ -31,13 +31,11 @@
 #ifndef _MATCHFINDER_H
 #define _MATCHFINDER_H
 
+#include "shrink.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Forward declarations */
-typedef struct _salvador_match salvador_match;
-typedef struct _salvador_compressor salvador_compressor;
 
 /**
  * Parse input data, build suffix array and overlaid data structures to speed up match finding
