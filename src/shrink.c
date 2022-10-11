@@ -1013,11 +1013,8 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                   }
 
                   /* Calculate the next command's current cost */
-                  int nNextCommandSize = 0;
-                  if (nNextLiterals != 0) {
-                     nNextCommandSize += salvador_get_literals_varlen_size(nNextLiterals);
-                     /* Don't include next command's literal databits */
-                  }
+                  int nNextCommandSize = salvador_get_literals_varlen_size(nNextLiterals);
+                  /* Don't include next command's literal databits */
 
                   /* Rep match or match with offset follows */
                   nNextCommandSize += 1;
