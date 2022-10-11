@@ -203,11 +203,11 @@ static int do_compress(const char *pszInFilename, const char *pszOutFilename, co
 
    nCompressedSize = salvador_compress(pDecompressedData, pCompressedData, nDictionarySize + nOriginalSize, nMaxCompressedSize, nFlags, nMaxWindowSize, nDictionarySize, compression_progress, &stats);
 
-   if ((nOptions & OPT_VERBOSE)) {
+   if (nOptions & OPT_VERBOSE) {
       nEndTime = do_get_time();
    }
 
-   if (nCompressedSize == -1) {
+   if (nCompressedSize == (size_t)-1) {
       free(pCompressedData);
       free(pDecompressedData);
       fprintf(stderr, "compression error for '%s'\n", pszInFilename);
@@ -217,27 +217,28 @@ static int do_compress(const char *pszInFilename, const char *pszOutFilename, co
    if (nOptions & OPT_BACKWARD)
       do_reverse_buffer(pCompressedData, nCompressedSize);
 
-   if (pszOutFilename) {
-      FILE *f_out;
+   /* Write whole compressed file out */
 
-      /* Write whole compressed file out */
-
-      f_out = fopen(pszOutFilename, "wb");
-      if (f_out) {
-         fwrite(pCompressedData, 1, nCompressedSize, f_out);
-         fclose(f_out);
-      }
+   FILE *f_out = fopen(pszOutFilename, "wb");
+   if (!f_out) {
+      free(pCompressedData);
+      free(pDecompressedData);
+      fprintf(stderr, "error opening '%s' for writing\n", pszOutFilename);
+      return 100;
    }
+   
+   fwrite(pCompressedData, 1, nCompressedSize, f_out);
+   fclose(f_out);
 
    free(pCompressedData);
    free(pDecompressedData);
 
-   if ((nOptions & OPT_VERBOSE)) {
+   if (nOptions & OPT_VERBOSE) {
       double fDelta = ((double)(nEndTime - nStartTime)) / 1000000.0;
       double fSpeed = ((double)nOriginalSize / 1048576.0) / fDelta;
-      fprintf(stdout, "\rCompressed '%s' in %g seconds, %.02g Mb/s, %d tokens (%g bytes/token), %d into %d bytes ==> %g %%\n",
+      fprintf(stdout, "\rCompressed '%s' in %g seconds, %.02g Mb/s, %d tokens (%g bytes/token), %zu into %zu bytes ==> %g %%\n",
          pszInFilename, fDelta, fSpeed, stats.commands_divisor, (double)nOriginalSize / (double)stats.commands_divisor,
-         (int)nOriginalSize, (int)nCompressedSize, (double)(nCompressedSize * 100.0 / nOriginalSize));
+         nOriginalSize, nCompressedSize, (double)(nCompressedSize * 100.0 / nOriginalSize));
    }
 
    if (nOptions & OPT_STATS) {
@@ -321,7 +322,7 @@ static int do_decompress(const char *pszInFilename, const char *pszOutFilename, 
    /* Get max decompressed size */
 
    nMaxDecompressedSize = salvador_get_max_decompressed_size(pCompressedData, nCompressedSize, nFlags);
-   if (nMaxDecompressedSize == -1) {
+   if (nMaxDecompressedSize == (size_t)-1) {
       free(pCompressedData);
       fprintf(stderr, "invalid compressed format for file '%s'\n", pszInFilename);
       return 100;
@@ -378,7 +379,7 @@ static int do_decompress(const char *pszInFilename, const char *pszOutFilename, 
    }
 
    nOriginalSize = salvador_decompress(pCompressedData, pDecompressedData, nCompressedSize, nMaxDecompressedSize, nDictionarySize, nFlags);
-   if (nOriginalSize == -1) {
+   if (nOriginalSize == (size_t)-1) {
       free(pDecompressedData);
       free(pCompressedData);
 
@@ -386,26 +387,31 @@ static int do_decompress(const char *pszInFilename, const char *pszOutFilename, 
       return 100;
    }
 
+   if (nOptions & OPT_VERBOSE) {
+      nEndTime = do_get_time();
+   }
+
    if (nOptions & OPT_BACKWARD)
       do_reverse_buffer(pDecompressedData + nDictionarySize, nOriginalSize);
 
-   if (pszOutFilename) {
-      FILE *f_out;
+   /* Write whole decompressed file out */
 
-      /* Write whole decompressed file out */
+   FILE *f_out = fopen(pszOutFilename, "wb");
+   if (!f_out) {
+      free(pDecompressedData);
+      free(pCompressedData);
 
-      f_out = fopen(pszOutFilename, "wb");
-      if (f_out) {
-         fwrite(pDecompressedData + nDictionarySize, 1, nOriginalSize, f_out);
-         fclose(f_out);
-      }
+      fprintf(stderr, "error opening '%s' for writing\n", pszOutFilename);
+      return 100;
    }
+   
+   fwrite(pDecompressedData + nDictionarySize, 1, nOriginalSize, f_out);
+   fclose(f_out);
 
    free(pDecompressedData);
    free(pCompressedData);
 
    if (nOptions & OPT_VERBOSE) {
-      nEndTime = do_get_time();
       double fDelta = ((double)(nEndTime - nStartTime)) / 1000000.0;
       double fSpeed = ((double)nOriginalSize / 1048576.0) / fDelta;
       fprintf(stdout, "Decompressed '%s' in %g seconds, %g Mb/s\n",
@@ -495,7 +501,7 @@ static int do_compare(const char *pszInFilename, const char *pszOutFilename, con
    /* Get max decompressed size */
 
    nMaxDecompressedSize = salvador_get_max_decompressed_size(pCompressedData, nCompressedSize, nFlags);
-   if (nMaxDecompressedSize == -1) {
+   if (nMaxDecompressedSize == (size_t)-1) {
       free(pOriginalData);
       free(pCompressedData);
       fprintf(stderr, "invalid compressed format for file '%s'\n", pszInFilename);
@@ -558,7 +564,7 @@ static int do_compare(const char *pszInFilename, const char *pszOutFilename, con
    }
 
    nDecompressedSize = salvador_decompress(pCompressedData, pDecompressedData, nCompressedSize, nMaxDecompressedSize, nDictionarySize, nFlags);
-   if (nDecompressedSize == -1) {
+   if (nDecompressedSize == (size_t)-1) {
       free(pDecompressedData);
       free(pOriginalData);
       free(pCompressedData);
@@ -567,10 +573,18 @@ static int do_compare(const char *pszInFilename, const char *pszOutFilename, con
       return 100;
    }
 
+   if (nOptions & OPT_VERBOSE) {
+      nEndTime = do_get_time();
+   }
+
    if (nOptions & OPT_BACKWARD)
       do_reverse_buffer(pDecompressedData + nDictionarySize, nDecompressedSize);
 
    if (nDecompressedSize != nOriginalSize || memcmp(pDecompressedData + nDictionarySize, pOriginalData, nOriginalSize)) {
+      free(pDecompressedData);
+      free(pOriginalData);
+      free(pCompressedData);
+
       fprintf(stderr, "error comparing compressed file '%s' with original '%s'\n", pszInFilename, pszOutFilename);
       return 100;
    }
@@ -580,7 +594,6 @@ static int do_compare(const char *pszInFilename, const char *pszOutFilename, con
    free(pCompressedData);
 
    if (nOptions & OPT_VERBOSE) {
-      nEndTime = do_get_time();
       double fDelta = ((double)(nEndTime - nStartTime)) / 1000000.0;
       double fSpeed = ((double)nOriginalSize / 1048576.0) / fDelta;
       fprintf(stdout, "Compared '%s' in %g seconds, %g Mb/s\n",
@@ -598,7 +611,7 @@ static void generate_compressible_data(unsigned char *pBuffer, size_t nBufferSiz
 
    srand(nSeed);
    
-   if (nIndex >= nBufferSize) return;
+   if (nBufferSize == 0) return;
    pBuffer[nIndex++] = rand() % nNumLiteralValues;
 
    while (nIndex < nBufferSize) {
@@ -637,8 +650,6 @@ static void xor_data(unsigned char *pBuffer, size_t nBufferSize, unsigned int nS
    int nXorProbability = (int)(fXorProbability * 1023.0f);
 
    srand(nSeed);
-
-   if (nIndex >= nBufferSize) return;
 
    while (nIndex < nBufferSize) {
       if ((rand() & 1023) < nXorProbability) {
@@ -733,7 +744,7 @@ static int do_self_test(const unsigned int nOptions, const unsigned int nMaxWind
             /* Try to compress it, expected to succeed */
             size_t nActualCompressedSize = salvador_compress(pGeneratedData, pCompressedData, nGeneratedDataSize, salvador_get_max_compressed_size(nGeneratedDataSize),
                nFlags, nMaxWindowSize, 0 /* dictionary size */, NULL, NULL);
-            if (nActualCompressedSize == -1 || nActualCompressedSize < (1 + 1 + 1 /* footer */)) {
+            if (nActualCompressedSize == (size_t)-1 || nActualCompressedSize < (1 + 1 + 1 /* footer */)) {
                free(pTmpDecompressedData);
                pTmpDecompressedData = NULL;
                free(pTmpCompressedData);
@@ -750,7 +761,7 @@ static int do_self_test(const unsigned int nOptions, const unsigned int nMaxWind
             /* Try to decompress it, expected to succeed */
             size_t nActualDecompressedSize;
             nActualDecompressedSize = salvador_decompress(pCompressedData, pTmpDecompressedData, nActualCompressedSize, nGeneratedDataSize, 0 /* dictionary size */, nFlags);
-            if (nActualDecompressedSize == -1) {
+            if (nActualDecompressedSize == (size_t)-1) {
                free(pTmpDecompressedData);
                pTmpDecompressedData = NULL;
                free(pTmpCompressedData);
@@ -891,7 +902,7 @@ static int do_compr_benchmark(const char *pszInFilename, const char *pszOutFilen
       long long t0 = do_get_time();
       nActualCompressedSize = salvador_compress(pFileData, pCompressedData + 1024, nFileSize, nRightGuardPos, nFlags, nMaxWindowSize, 0 /* dictionary size */, NULL, NULL);
       long long t1 = do_get_time();
-      if (nActualCompressedSize == -1) {
+      if (nActualCompressedSize == (size_t)-1) {
          free(pCompressedData);
          free(pFileData);
          fprintf(stderr, "compression error\n");
@@ -998,7 +1009,7 @@ static int do_dec_benchmark(const char *pszInFilename, const char *pszOutFilenam
    /* Allocate max decompressed size */
 
    nMaxDecompressedSize = salvador_get_max_decompressed_size(pFileData, nFileSize, nFlags);
-   if (nMaxDecompressedSize == -1) {
+   if (nMaxDecompressedSize == (size_t)-1) {
       free(pFileData);
       fprintf(stderr, "invalid compressed format for file '%s'\n", pszInFilename);
       return 100;
@@ -1020,7 +1031,7 @@ static int do_dec_benchmark(const char *pszInFilename, const char *pszOutFilenam
       long long t0 = do_get_time();
       nActualDecompressedSize = salvador_decompress(pFileData, pDecompressedData, nFileSize, nMaxDecompressedSize, 0 /* dictionary size */, nFlags);
       long long t1 = do_get_time();
-      if (nActualDecompressedSize == -1) {
+      if (nActualDecompressedSize == (size_t)-1) {
          free(pDecompressedData);
          free(pFileData);
          fprintf(stderr, "decompression error\n");
