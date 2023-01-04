@@ -123,7 +123,6 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
    const unsigned char* pInputDataEnd = pInputData + nInputSize;
    int nCurBitMask = 0;
    unsigned char bits = 0;
-   int nMatchOffset = 1;
    int nIsFirstCommand = 1;
    const int nIsInverted = (nFlags & FLG_IS_INVERTED) && !(nFlags & FLG_IS_BACKWARD);
    const int nIsBackward = (nFlags & FLG_IS_BACKWARD) ? 1 : 0;
@@ -181,17 +180,11 @@ size_t salvador_get_max_decompressed_size(const unsigned char *pInputData, size_
 
          if (nMatchOffsetHighByte == 256)
             break;
-         nMatchOffsetHighByte--;
 
          if (pInputData >= pInputDataEnd)
             return -1;
 
          unsigned int nMatchOffsetLowByte = (unsigned int)(*pInputData++);
-         if (nIsBackward)
-            nMatchOffset = (nMatchOffsetHighByte << 7) | (nMatchOffsetLowByte >> 1);
-         else
-            nMatchOffset = (nMatchOffsetHighByte << 7) | (127 - (nMatchOffsetLowByte >> 1));
-         nMatchOffset++;
 
          nMatchLen = salvador_read_elias_prefix(&pInputData, pInputDataEnd, 1, nIsBackward, &nCurBitMask, &bits, nMatchOffsetLowByte & 1);
 
