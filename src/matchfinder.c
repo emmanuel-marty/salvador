@@ -81,7 +81,7 @@ int salvador_build_suffix_array(salvador_compressor *pCompressor, const unsigned
          PLCP[i] = 0;
          continue;
       }
-      int nMaxLen = (i > Phi[i]) ? (nInWindowSize - i) : (nInWindowSize - Phi[i]);
+      const int nMaxLen = (i > Phi[i]) ? (nInWindowSize - i) : (nInWindowSize - Phi[i]);
       while (nCurLen < nMaxLen && pInWindow[i + nCurLen] == pInWindow[Phi[i] + nCurLen]) nCurLen++;
       PLCP[i] = nCurLen;
       if (nCurLen > 0)
@@ -94,7 +94,7 @@ int salvador_build_suffix_array(salvador_compressor *pCompressor, const unsigned
    intervals[0] &= POS_MASK;
 
    for (i = 1; i < nInWindowSize; i++) {
-      int nIndex = (int)(intervals[i] & POS_MASK);
+      const int nIndex = (const int)(intervals[i] & POS_MASK);
       int nLen = PLCP[nIndex];
       if (nLen < MIN_MATCH_SIZE)
          nLen = 0;
