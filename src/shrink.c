@@ -547,8 +547,6 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
 
       if (i == nStartOffset && (nBlockFlags & 1)) continue;
 
-      const salvador_match *match = pCompressor->match + ((i - nStartOffset) * NMATCHES_PER_INDEX);
-      const unsigned short *match_depth = pCompressor->match_depth + ((i - nStartOffset) * NMATCHES_PER_INDEX);
       const int nNumArrivalsForThisPos = j;
       int nOverallMinRepLen = 0, nOverallMaxRepLen = 0;
 
@@ -556,7 +554,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
       int nNumRepMatchArrivals = 0;
 
       if (i < nEndOffset) {
-         int nMaxRepLenForPos = nEndOffset - i;
+         unsigned int nMaxRepLenForPos = nEndOffset - i;
          if (nMaxRepLenForPos > LCP_MAX)
             nMaxRepLenForPos = LCP_MAX;
 
@@ -597,6 +595,9 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
          }
       }
       nRepMatchArrivalIdx[nNumRepMatchArrivals] = -1;
+
+      const salvador_match* match = pCompressor->match + ((i - nStartOffset) * NMATCHES_PER_INDEX);
+      const unsigned short* match_depth = pCompressor->match_depth + ((i - nStartOffset) * NMATCHES_PER_INDEX);
 
       for (m = 0; m < NMATCHES_PER_INDEX && match[m].length; m++) {
          int nOrigMatchLen = match[m].length;
@@ -803,7 +804,7 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
    
    if (!nInsertForwardReps) {
       const salvador_arrival* end_arrival = &arrival[i * nMaxArrivalsPerPosition];
-      salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
+      salvador_match* pBestMatch = pCompressor->best_match - nStartOffset;
 
       while (end_arrival->from_slot > 0 && end_arrival->from_pos < (const unsigned int)nEndOffset) {
          pBestMatch[end_arrival->from_pos].length = end_arrival->match_len;
@@ -827,14 +828,14 @@ static void salvador_optimize_forward(salvador_compressor *pCompressor, const un
  * @return non-zero if the number of tokens was reduced, 0 if it wasn't
  */
 static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsigned char *pInWindow, const int nStartOffset, const int nEndOffset, const int *nCurRepMatchOffset, const int nBlockFlags) {
-   salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
+   salvador_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int i;
    int nNumLiterals = nBlockFlags & 1;
    int nRepMatchOffset = *nCurRepMatchOffset;
    int nDidReduce = 0;
 
    for (i = nStartOffset + (nBlockFlags & 1); i < nEndOffset; ) {
-      salvador_final_match *pMatch = pBestMatch + i;
+      salvador_match *pMatch = pBestMatch + i;
 
       if (pMatch->length == 0 &&
          (i + 1) < nEndOffset &&
@@ -1342,7 +1343,7 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
  * @return size of compressed data in output buffer, or -1 if the data is uncompressible
  */
 static int salvador_write_block(salvador_compressor* pCompressor, const unsigned char* pInWindow, const int nStartOffset, const int nEndOffset, unsigned char* pOutData, const int nMaxOutDataSize, int* nCurBitsOffset, int* nCurBitShift, int* nFinalLiterals, int* nCurRepMatchOffset, const int nBlockFlags) {
-   const salvador_final_match* pBestMatch = pCompressor->best_match - nStartOffset;
+   const salvador_match* pBestMatch = pCompressor->best_match - nStartOffset;
    int nRepMatchOffset = *nCurRepMatchOffset;
    int nOutOffset = 0;
    const int nMaxOffset = pCompressor->max_offset;
@@ -1354,7 +1355,7 @@ static int salvador_write_block(salvador_compressor* pCompressor, const unsigned
    int i;
 
    for (i = nStartOffset; i < nEndOffset; ) {
-      const salvador_final_match* pMatch = pBestMatch + i;
+      const salvador_match* pMatch = pBestMatch + i;
 
       if (pMatch->length >= 2 || (pMatch->length == 1 && pMatch->offset == nRepMatchOffset && nNumLiterals != 0)) {
          const int nMatchLen = pMatch->length;
@@ -1563,7 +1564,7 @@ static int salvador_optimize_and_write_block(salvador_compressor *pCompressor, c
    int *offset_cache = pCompressor->offset_cache;
    int i, nPosition;
 
-   memset(pCompressor->best_match, 0, pCompressor->block_size * sizeof(salvador_final_match));
+   memset(pCompressor->best_match, 0, pCompressor->block_size * sizeof(salvador_match));
 
    /* Count identical bytes */
 
@@ -1819,7 +1820,7 @@ static int salvador_compressor_init(salvador_compressor *pCompressor, const int 
                pCompressor->arrival = (salvador_arrival *)malloc((nBlockSize + 1) * nMaxArrivals * sizeof(salvador_arrival));
 
                if (pCompressor->arrival) {
-                  pCompressor->best_match = (salvador_final_match *)malloc(nBlockSize * sizeof(salvador_final_match));
+                  pCompressor->best_match = (salvador_match *)malloc(nBlockSize * sizeof(salvador_match));
 
                   if (pCompressor->best_match) {
                      pCompressor->match = (salvador_match *)malloc(nBlockSize * NMATCHES_PER_INDEX * sizeof(salvador_match));

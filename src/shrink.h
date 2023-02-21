@@ -59,12 +59,6 @@ typedef struct _salvador_match {
    unsigned short offset;
 } salvador_match;
 
-/** One finalized match */
-typedef struct _salvador_final_match {
-   int length;
-   int offset;
-} salvador_final_match;
-
 /** Forward arrival slot */
 typedef struct _salvador_arrival {
    int cost;
@@ -128,7 +122,7 @@ typedef struct _salvador_compressor {
    unsigned long long *open_intervals;
    salvador_match *match;
    unsigned short *match_depth;
-   salvador_final_match *best_match;
+   salvador_match *best_match;
    salvador_arrival *arrival;
    int *first_offset_for_byte;
    int *next_offset_for_pos;
