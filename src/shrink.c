@@ -1297,6 +1297,13 @@ static int salvador_reduce_commands(salvador_compressor *pCompressor, const unsi
                nNextIndex++;
             }
 
+            if (nRepMatchOffset != pMatch->offset && (nNextIndex < nEndOffset || !nDidReduce)) {
+               pMatch->length = 0;
+               pMatch->offset = 0;
+               nDidReduce = 1;
+               continue;
+            }
+
             if (nNextLiterals != 0) {
                int nCurPartialSize = salvador_get_literals_varlen_size(nNumLiterals);
                nCurPartialSize += TOKEN_SIZE + 1 /* salvador_get_match_varlen_size_rep(pMatch->length) */;
